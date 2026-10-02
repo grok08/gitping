@@ -1,0 +1,11 @@
+{
+  "name": "gitping",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "bun --watch apps/api/src/index.ts"
+  }
+}
