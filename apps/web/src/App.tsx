@@ -1,8 +1,10 @@
 import {
+  ArrowUp,
   Bell,
   Check,
   ChevronDown,
   Copy,
+  GitBranch,
   Hash,
   Menu,
   Moon,
@@ -13,9 +15,12 @@ import {
   Users,
   X,
 } from "lucide-react";
+import "@fontsource-variable/ibm-plex-sans";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import "./App.css";
+import "./chat.css";
 
 import {
   getMessages,
@@ -182,7 +187,9 @@ function App() {
   const [chatSearchOpen, setChatSearchOpen] = useState(false);
 
   const [sidebarOpen, setSidebarOpen] = useState(() => {
-    return localStorage.getItem("gitping-sidebar") !== "closed";
+    const compactViewport = window.matchMedia("(max-width: 760px)").matches;
+
+    return !compactViewport && localStorage.getItem("gitping-sidebar") !== "closed";
   });
 
   const [theme, setTheme] = useState<Theme>(() => {
@@ -204,10 +211,12 @@ function App() {
 
   const [globalPanel, setGlobalPanel] =
     useState<GlobalPanel>(null);
+  const [panelClosing, setPanelClosing] = useState(false);
 
   const [chatPanel, setChatPanel] = useState<ChatPanel>(null);
 
   const [modal, setModal] = useState<Modal>(null);
+  const [modalClosing, setModalClosing] = useState(false);
   const [newConversationName, setNewConversationName] =
     useState("");
 
@@ -281,6 +290,7 @@ function App() {
         setSidebarOpen(true);
         setGlobalPanel(null);
         setChatPanel(null);
+        setPanelClosing(false);
         setChatSearchOpen(false);
         setBranchOpen(false);
         setMoreOpen(false);
@@ -300,8 +310,10 @@ function App() {
         setProfileOpen(false);
         setGlobalPanel(null);
         setChatPanel(null);
+        setPanelClosing(false);
         setChatSearchOpen(false);
         setModal(null);
+        setModalClosing(false);
         setError("");
         setGlobalSearch("");
       }
@@ -377,6 +389,28 @@ function App() {
     setToast(message);
   }
 
+  function openModal(nextModal: Exclude<Modal, null>) {
+    setModalClosing(false);
+    setModal(nextModal);
+  }
+
+  function closeModal() {
+    if (modal) {
+      setModalClosing(true);
+    }
+  }
+
+  function closePanels(immediate = false) {
+    if (immediate || (!globalPanel && !chatPanel)) {
+      setGlobalPanel(null);
+      setChatPanel(null);
+      setPanelClosing(false);
+      return;
+    }
+
+    setPanelClosing(true);
+  }
+
   function closeFloatingMenus() {
     setBranchOpen(false);
     setMoreOpen(false);
@@ -385,34 +419,50 @@ function App() {
 
   function toggleSidebar() {
     closeFloatingMenus();
-    setGlobalPanel(null);
-    setChatPanel(null);
+    closePanels(true);
     setSidebarOpen((current) => !current);
   }
 
   function openGlobalPanel(panel: Exclude<GlobalPanel, null>) {
     closeFloatingMenus();
-    setChatPanel(null);
     setChatSearchOpen(false);
 
-    setGlobalPanel((current) =>
-      current === panel ? null : panel,
-    );
+    if (globalPanel === panel && !chatPanel) {
+      if (panelClosing) {
+        setPanelClosing(false);
+        return;
+      }
+
+      closePanels();
+      return;
+    }
+
+    setPanelClosing(false);
+    setChatPanel(null);
+    setGlobalPanel(panel);
   }
 
   function openChatMembers() {
     closeFloatingMenus();
-    setGlobalPanel(null);
 
-    setChatPanel((current) =>
-      current === "members" ? null : "members",
-    );
+    if (chatPanel === "members" && !globalPanel) {
+      if (panelClosing) {
+        setPanelClosing(false);
+        return;
+      }
+
+      closePanels();
+      return;
+    }
+
+    setPanelClosing(false);
+    setGlobalPanel(null);
+    setChatPanel("members");
   }
 
   function openChatSearch() {
     closeFloatingMenus();
-    setGlobalPanel(null);
-    setChatPanel(null);
+    closePanels(true);
     setChatSearchOpen(true);
 
     requestAnimationFrame(() => {
@@ -513,7 +563,7 @@ function App() {
 
     setActiveConversation(id);
     setNewConversationName("");
-    setModal(null);
+    closeModal();
 
     showToast(
       isDirect
@@ -546,8 +596,10 @@ function App() {
 
   function selectConversation(id: string) {
     setActiveConversation(id);
-    setGlobalPanel(null);
-    setChatPanel(null);
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      setSidebarOpen(false);
+    }
+    closePanels(true);
     setChatSearchOpen(false);
     setChatSearch("");
     closeFloatingMenus();
@@ -567,24 +619,13 @@ function App() {
         sidebarOpen ? "sidebar-open" : "sidebar-collapsed"
       }`}
     >
-      {branchNotice && (
-        <div
-          className="dynamic-island"
-          role="status"
-          aria-live="polite"
-        >
-          <span className="dynamic-island-icon">
-            <Check size={13} />
-          </span>
-
-          <div className="dynamic-island-content">
-            <span className="dynamic-island-label">
-              BRANCH
-            </span>
-
-            <strong>{branchNotice}</strong>
-          </div>
-        </div>
+      {sidebarOpen && (
+        <button
+          className="sidebar-scrim"
+          type="button"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close conversation list"
+        />
       )}
 
       {/* LEFT RAIL */}
@@ -613,8 +654,7 @@ function App() {
           className="rail-button active"
           type="button"
           onClick={() => {
-            setGlobalPanel(null);
-            setChatPanel(null);
+            closePanels();
           }}
           aria-label="Home"
           title="Home"
@@ -675,9 +715,8 @@ function App() {
           type="button"
           onClick={() => {
             closeFloatingMenus();
-            setGlobalPanel(null);
-            setChatPanel(null);
-            setModal("settings");
+            closePanels(true);
+            openModal("settings");
           }}
           aria-label="Settings"
           title="Settings"
@@ -690,8 +729,7 @@ function App() {
           type="button"
           onClick={() => {
             closeFloatingMenus();
-            setGlobalPanel(null);
-            setChatPanel(null);
+            closePanels(true);
             setProfileOpen((current) => !current);
           }}
           aria-label="Open profile"
@@ -736,7 +774,7 @@ function App() {
           <div>
             <div className="workspace-name">GitPing</div>
             <div className="workspace-subtitle">
-              Developer workspace
+              Engineering workspace
             </div>
           </div>
 
@@ -745,9 +783,8 @@ function App() {
             type="button"
             onClick={() => {
               closeFloatingMenus();
-              setGlobalPanel(null);
-              setChatPanel(null);
-              setModal("channel");
+              closePanels(true);
+              openModal("channel");
             }}
             aria-label="New channel"
             title="New channel"
@@ -797,9 +834,8 @@ function App() {
                 type="button"
                 onClick={() => {
                   closeFloatingMenus();
-                  setGlobalPanel(null);
-                  setChatPanel(null);
-                  setModal("channel");
+                  closePanels(true);
+                  openModal("channel");
                 }}
                 aria-label="Add channel"
               >
@@ -827,8 +863,13 @@ function App() {
                 >
                   <Hash size={15} />
 
-                  <span className="conversation-name">
-                    {conversation.name}
+                  <span className="conversation-details">
+                    <span className="conversation-name">
+                      {conversation.name}
+                    </span>
+                    <span className="conversation-preview">
+                      {conversation.preview || "No messages yet"}
+                    </span>
                   </span>
 
                   {conversation.unread ? (
@@ -848,9 +889,8 @@ function App() {
                 type="button"
                 onClick={() => {
                   closeFloatingMenus();
-                  setGlobalPanel(null);
-                  setChatPanel(null);
-                  setModal("direct");
+                  closePanels(true);
+                  openModal("direct");
                 }}
                 aria-label="New direct message"
               >
@@ -876,10 +916,17 @@ function App() {
                   }
                   type="button"
                 >
-                  <span className="presence-dot" />
+                  <span className="conversation-avatar">
+                    {conversation.name.charAt(0).toUpperCase()}
+                  </span>
 
-                  <span className="conversation-name">
-                    {conversation.name}
+                  <span className="conversation-details">
+                    <span className="conversation-name">
+                      {conversation.name}
+                    </span>
+                    <span className="conversation-preview">
+                      {conversation.preview || "Start a conversation"}
+                    </span>
                   </span>
 
                   {conversation.unread ? (
@@ -895,15 +942,34 @@ function App() {
 
       {/* MAIN CHAT */}
       <main className="chat-panel">
+        {branchNotice && (
+          <div
+            className="dynamic-island"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="dynamic-island-icon">
+              <Check size={13} />
+            </span>
+
+            <div className="dynamic-island-content">
+              <span className="dynamic-island-label">
+                BRANCH
+              </span>
+
+              <strong>{branchNotice}</strong>
+            </div>
+          </div>
+        )}
+
         <header className="chat-header">
           <div className="chat-header-main">
             <button
               className="mobile-menu"
               type="button"
-              onClick={() =>
-                setSidebarOpen(true)
-              }
-              aria-label="Open navigation"
+              onClick={toggleSidebar}
+              aria-label={sidebarOpen ? "Close navigation" : "Open navigation"}
+              title={sidebarOpen ? "Close navigation" : "Open navigation"}
             >
               <Menu size={18} />
             </button>
@@ -928,11 +994,11 @@ function App() {
                     onClick={() => {
                       setMoreOpen(false);
                       setProfileOpen(false);
-                      setGlobalPanel(null);
-                      setChatPanel(null);
+                      closePanels(true);
                       setBranchOpen((current) => !current);
                     }}
                   >
+                    <GitBranch size={13} />
                     {branch}
                     <ChevronDown size={13} />
                   </button>
@@ -998,8 +1064,7 @@ function App() {
               onClick={() => {
                 setBranchOpen(false);
                 setProfileOpen(false);
-                setGlobalPanel(null);
-                setChatPanel(null);
+                closePanels(true);
                 setMoreOpen((current) => !current);
               }}
               aria-label="More"
@@ -1041,7 +1106,7 @@ function App() {
                   type="button"
                   onClick={() => {
                     setMoreOpen(false);
-                    setModal("settings");
+                    openModal("settings");
                   }}
                 >
                   <Settings size={14} />
@@ -1135,6 +1200,22 @@ function App() {
                       {message.text}
                     </div>
 
+                    <div className="message-command">
+                      <span aria-hidden="true">$</span>
+                      <code>{message.command}</code>
+                      <button
+                        className="message-copy"
+                        type="button"
+                        onClick={() =>
+                          void copyMessageCommand(message.command)
+                        }
+                        aria-label="Copy Git command"
+                        title="Copy Git command"
+                      >
+                        <Copy size={13} />
+                      </button>
+                    </div>
+
                     <div className="message-footer">
                       <span className="commit-pill">
                         commit
@@ -1143,20 +1224,6 @@ function App() {
                       <span className="commit-id">
                         {message.id.slice(0, 8)}
                       </span>
-
-                      <button
-                        className="message-copy"
-                        type="button"
-                        onClick={() =>
-                          void copyMessageCommand(
-                            message.command,
-                          )
-                        }
-                        aria-label="Copy Git command"
-                        title="Copy Git command"
-                      >
-                        <Copy size={12} />
-                      </button>
                     </div>
                   </div>
                 </article>
@@ -1203,8 +1270,9 @@ function App() {
                 disabled={!input.trim()}
                 type="submit"
                 aria-label="Send command"
+                title="Send command"
               >
-                ↵
+                <ArrowUp size={17} />
               </button>
             </form>
 
@@ -1220,7 +1288,18 @@ function App() {
         </footer>
 
         {globalPanel && (
-          <aside className="side-panel">
+          <aside
+            className={`side-panel ${panelClosing ? "is-closing" : ""}`}
+            onTransitionEnd={(event) => {
+              if (
+                panelClosing &&
+                event.target === event.currentTarget &&
+                event.propertyName === "opacity"
+              ) {
+                closePanels(true);
+              }
+            }}
+          >
             <div className="side-panel-header">
               <div>
                 <strong>
@@ -1238,7 +1317,7 @@ function App() {
 
               <button
                 type="button"
-                onClick={() => setGlobalPanel(null)}
+                onClick={() => closePanels()}
                 aria-label="Close panel"
               >
                 <X size={17} />
@@ -1297,7 +1376,18 @@ function App() {
         )}
 
         {chatPanel === "members" && (
-          <aside className="side-panel chat-side-panel">
+          <aside
+            className={`side-panel chat-side-panel ${panelClosing ? "is-closing" : ""}`}
+            onTransitionEnd={(event) => {
+              if (
+                panelClosing &&
+                event.target === event.currentTarget &&
+                event.propertyName === "opacity"
+              ) {
+                closePanels(true);
+              }
+            }}
+          >
             <div className="side-panel-header">
               <div>
                 <strong>
@@ -1315,7 +1405,7 @@ function App() {
 
               <button
                 type="button"
-                onClick={() => setChatPanel(null)}
+                onClick={() => closePanels()}
                 aria-label="Close conversation members"
               >
                 <X size={17} />
@@ -1369,8 +1459,18 @@ function App() {
 
       {modal && (
         <div
-          className="modal-backdrop"
-          onMouseDown={() => setModal(null)}
+          className={`modal-backdrop ${modalClosing ? "is-closing" : ""}`}
+          onMouseDown={closeModal}
+          onTransitionEnd={(event) => {
+            if (
+              modalClosing &&
+              event.target === event.currentTarget &&
+              event.propertyName === "opacity"
+            ) {
+              setModal(null);
+              setModalClosing(false);
+            }
+          }}
         >
           <div
             className="modal"
@@ -1399,7 +1499,7 @@ function App() {
 
               <button
                 type="button"
-                onClick={() => setModal(null)}
+                onClick={closeModal}
                 aria-label="Close"
               >
                 <X size={17} />
@@ -1476,7 +1576,7 @@ function App() {
                   <button
                     type="button"
                     className="secondary-button"
-                    onClick={() => setModal(null)}
+                    onClick={closeModal}
                   >
                     Cancel
                   </button>

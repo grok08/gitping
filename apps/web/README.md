@@ -38,6 +38,13 @@ Run Oxlint:
 bun run --cwd apps/web lint
 ```
 
+Run the browser tests (the API is mocked, so no API server or database is needed):
+
+```bash
+bun run --cwd apps/web playwright install chromium
+bun run test:e2e
+```
+
 Preview a production build:
 
 ```bash
