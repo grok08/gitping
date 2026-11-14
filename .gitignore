@@ -1,15 +1,22 @@
 # dependencies (bun install)
 node_modules
 
-#playwright mcp
-.playwright-mcp/
-apps/web/test-results/
-apps/web/playwright-report/
-
 # output
 out
 dist
+dist-ssr
 *.tgz
+*.local
+
+# local SQLite databases
+**/data/*.db
+**/data/*.db-shm
+**/data/*.db-wal
+
+# playwright
+apps/web/test-results/
+apps/web/playwright-report/
+.playwright-mcp/
 
 # code coverage
 coverage
@@ -37,6 +44,3 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
-
-# Plan.md
-PLAN.md

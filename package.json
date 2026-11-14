@@ -6,7 +6,17 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:api": "bun --watch apps/api/src/index.ts",
-    "test:e2e": "bun run --cwd apps/web test:e2e"
+    "dev:api": "bun run --cwd apps/api dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "typecheck": "tsc -p packages/command-engine && tsc -p apps/api && tsc -p apps/web/tsconfig.app.json && tsc -p apps/web/tsconfig.node.json",
+    "lint": "oxlint apps packages",
+    "test": "bun test apps/api/src packages/command-engine/src",
+    "build": "bun run --cwd apps/web build",
+    "test:e2e": "bun run --cwd apps/web test:e2e",
+    "check": "bun run typecheck && bun run lint && bun run test && bun run build && bun run test:e2e"
+  },
+  "devDependencies": {
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2"
   }
 }

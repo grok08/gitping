@@ -13,6 +13,14 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
+  expect: {
+    toHaveScreenshot: {
+      pathTemplate:
+        "{testDir}/../../../../evidence/phase-1/parity/{arg}{ext}",
+      animations: "disabled",
+      caret: "hide",
+    },
+  },
   projects: [
     {
       name: "chromium",

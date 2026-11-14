@@ -1,0 +1,238 @@
+.floating-menu {
+  position: absolute;
+  min-width: 190px;
+  padding: 5px;
+  z-index: 70;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 130ms var(--ease-out), transform 130ms var(--ease-out);
+}
+
+@starting-style {
+  .floating-menu {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+.floating-menu button {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.floating-menu button:hover {
+  background: var(--panel-soft);
+}
+
+.profile-menu {
+  left: 50px;
+  bottom: 62px;
+  width: 190px;
+  transform-origin: bottom left;
+}
+
+.profile-menu strong,
+.profile-menu span {
+  display: block;
+}
+
+.profile-menu strong {
+  padding: 8px 9px 2px;
+  font-size: 12px;
+}
+
+.profile-menu span {
+  padding: 0 9px 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.branch-menu {
+  top: 28px;
+  left: 0;
+  transform-origin: top left;
+}
+
+.header-menu {
+  top: 42px;
+  right: 0;
+  transform-origin: top right;
+}
+
+.menu-title {
+  padding: 7px 9px;
+  color: var(--text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9px;
+}
+
+.menu-selected {
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+.menu-check-space {
+  width: 14px;
+}
+
+.side-panel {
+  position: absolute;
+  top: 68px;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+}
+
+.side-panel.is-closing {
+  opacity: 0;
+  transform: translateX(8px);
+  transition-duration: 140ms;
+}
+
+@starting-style {
+  .side-panel:not(.is-closing) {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+.side-panel-header {
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.side-panel-header strong,
+.side-panel-header span {
+  display: block;
+}
+
+.side-panel-header strong {
+  font-size: 13px;
+}
+
+.side-panel-header span {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.side-panel-header button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.side-panel-header button:hover {
+  background: var(--panel-soft);
+  color: var(--text);
+}
+
+.side-panel-content {
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.member-row,
+.notification-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px;
+  border-radius: 7px;
+}
+
+.member-row:hover,
+.notification-item:hover {
+  background: var(--panel-soft);
+}
+
+.member-row > div:nth-child(2),
+.notification-item > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.member-row strong,
+.member-row span,
+.notification-item strong,
+.notification-item span {
+  display: block;
+}
+
+.member-row strong,
+.notification-item strong {
+  font-size: 12px;
+}
+
+.member-row div span,
+.notification-item div span {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.notification-item {
+  align-items: flex-start;
+  color: var(--text-muted);
+}
+
+.notification-item div {
+  color: var(--text);
+}
+
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 90;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 10px 13px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 11px;
+  animation: toast-in 160ms var(--ease-out), toast-out 140ms var(--ease-out) 1900ms forwards;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-out {
+  to { opacity: 0; transform: translateY(5px); }
+}

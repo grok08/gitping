@@ -109,18 +109,25 @@ gitping/
 │
 ├── apps/
 │   ├── api/
-│   │   ├── src/
-│   │   │   ├── db.ts
-│   │   │   └── index.ts
-│   │   └── data/
-│   │       └── gitping.db
+│   │   └── src/
+│   │       ├── index.ts          # server bootstrap
+│   │       ├── app.ts            # route assembly
+│   │       ├── db.ts             # SQLite connection
+│   │       ├── routes/           # HTTP mapping only
+│   │       ├── services/         # business logic
+│   │       ├── repositories/     # SQL
+│   │       └── types/
 │   │
 │   └── web/
 │       └── src/
-│           ├── App.tsx
-│           ├── App.css
-│           └── lib/
-│               └── api.ts
+│           ├── App.tsx           # composition root
+│           ├── features/         # chat, conversations, branch, search, members, workspace
+│           ├── components/ui/    # avatar, presence dot, side panel
+│           ├── hooks/            # theme, sidebar, shortcuts, transient messages
+│           ├── lib/              # API client and formatting
+│           ├── data/             # seed data for the local slice
+│           ├── styles/           # tokens, globals, responsive, import order
+│           └── types/
 │
 ├── packages/
 │   └── command-engine/
@@ -128,6 +135,7 @@ gitping/
 │           ├── parser.ts
 │           └── parser.test.ts
 │
+├── evidence/                     # per-phase browser evidence
 ├── package.json
 └── bun.lock
 ```
@@ -324,7 +332,7 @@ http://localhost:3000
 Start the frontend in another terminal:
 
 ```bash
-bun run --cwd apps/web dev
+bun run dev:web
 ```
 
 The frontend runs on:
@@ -337,16 +345,27 @@ http://localhost:5173
 
 ## Verification
 
-Run the command-engine tests:
+One command runs every check (typecheck, lint, unit tests, build, browser tests):
 
 ```bash
-bun --filter @gitping/command-engine test
+bun run check
 ```
 
-Build the frontend:
+Individual checks:
 
 ```bash
-bun run --cwd apps/web build
+bun run typecheck
+bun run lint
+bun run test
+bun run build
+bun run test:e2e
+```
+
+The browser suite needs Chromium once per machine:
+
+```bash
+cd apps/web
+bun x playwright install chromium
 ```
 
 Check the API:
@@ -368,6 +387,8 @@ Read persisted messages:
 ```bash
 curl http://localhost:3000/messages
 ```
+
+Every phase keeps browser evidence under `evidence/`. See `AGENTS.md` for the rule.
 
 ---
 

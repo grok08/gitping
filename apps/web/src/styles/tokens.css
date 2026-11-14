@@ -1,0 +1,52 @@
+:root {
+  --canvas: #f3f6fa;
+  --panel: #ffffff;
+  --panel-soft: #eef2f7;
+  --sidebar: #e8edf3;
+  --rail: #e8edf3;
+  --rail-hover: #dce5ef;
+  --border: #d8dee7;
+  --text: #18212b;
+  --text-muted: #637080;
+  --text-subtle: #5d6c7b;
+  --accent: #2d6796;
+  --accent-hover: #255783;
+  --accent-button: #326b99;
+  --accent-button-hover: #285b86;
+  --accent-soft: #e6f0fb;
+  --success: #5da276;
+  --warning: #aa8a4c;
+  --danger: #b86d6d;
+  --message-hover: #f2f5f8;
+  --composer: #ffffff;
+  --focus-content-width: 850px;
+  --focus-composer-width: 850px;
+  --shadow: 0 10px 30px rgb(15 23 42 / 7%), 0 2px 8px rgb(15 23 42 / 4%);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+:root[data-theme="dark"] {
+  --canvas: #0e1218;
+  --panel: #151a21;
+  --panel-soft: #1a2028;
+  --sidebar: #12171e;
+  --rail: #12171e;
+  --rail-hover: #1a2028;
+  --border: #28303a;
+  --text: #f1f4f8;
+  --text-muted: #a4afbd;
+  --text-subtle: #a4afbd;
+  --accent: #7db7ff;
+  --accent-hover: #91c2ff;
+  --accent-button: #2a5f8c;
+  --accent-button-hover: #3473a5;
+  --accent-soft: #1b3048;
+  --success: #70ae88;
+  --warning: #c1a565;
+  --danger: #cb7a7a;
+  --message-hover: #191f27;
+  --composer: #151a21;
+  --focus-content-width: 850px;
+  --focus-composer-width: 850px;
+  --shadow: 0 18px 45px rgb(0 0 0 / 36%), 0 4px 14px rgb(0 0 0 / 22%);
+}
