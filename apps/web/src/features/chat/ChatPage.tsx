@@ -28,6 +28,7 @@ type ChatPageProps = {
   panel: ActivePanel;
   panelClosing: boolean;
   workspaceMembers: WorkspaceMember[];
+  conversationMembers: WorkspaceMember[];
   messageListRef: RefObject<HTMLElement | null>;
   searchInputRef: RefObject<HTMLInputElement | null>;
   composerInputRef: RefObject<HTMLInputElement | null>;
@@ -69,6 +70,7 @@ export function ChatPage({
   panel,
   panelClosing,
   workspaceMembers,
+  conversationMembers,
   messageListRef,
   searchInputRef,
   composerInputRef,
@@ -92,11 +94,6 @@ export function ChatPage({
   onClosePanel,
   onPanelClosed,
 }: ChatPageProps) {
-  const visibleMembers = workspaceMembers.slice(
-    0,
-    conversation?.members ? Math.min(3, conversation.members) : 2,
-  );
-
   return (
     <main className="chat-panel">
       {branchNotice && <BranchNotification message={branchNotice} />}
@@ -182,8 +179,10 @@ export function ChatPage({
               : (conversation?.name ?? "")
           }
           subtitle={
-            conversation?.members
-              ? `${conversation.members} members`
+            conversation?.type === "channel"
+              ? `${conversationMembers.length} ${
+                  conversationMembers.length === 1 ? "member" : "members"
+                }`
               : "Direct conversation"
           }
           closeLabel="Close conversation members"
@@ -191,7 +190,7 @@ export function ChatPage({
           onClose={onClosePanel}
           onClosed={onPanelClosed}
         >
-          <MemberList members={visibleMembers} variant="conversation" />
+          <MemberList members={conversationMembers} variant="conversation" />
         </SidePanel>
       )}
     </main>

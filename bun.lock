@@ -41,6 +41,9 @@
     },
     "packages/command-engine": {
       "name": "@gitping/command-engine",
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
     },
   },
   "packages": {

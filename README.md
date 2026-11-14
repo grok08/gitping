@@ -22,12 +22,12 @@ The goal is to make Git concepts useful for communication without making the app
 
 ## Current Status
 
-GitPing currently has a working first end-to-end vertical slice, now backed by a Git-native domain model:
+GitPing currently has a working end-to-end vertical slice, now backed by a Git-native domain model and persistent conversations:
 
 ```text
 React
   │
-  │ POST /commands
+  │ POST /conversations/:id/commands
   ▼
 Hono
   │
@@ -48,6 +48,8 @@ React conversation
 ```
 
 The current implementation is an early product foundation rather than a production-ready messaging service.
+
+The conversation list, member counts, last-message previews, branch lists, and per-conversation message history are read from SQLite. Creating a channel or direct message writes the conversation, its membership, and its `main` branch in one transaction.
 
 ---
 
@@ -83,15 +85,15 @@ The command parser lives in the `command-engine` workspace package.
 
 The frontend currently provides:
 
-- channels
-- direct conversations
-- message history
-- command composer
-- branch selector
+- channels and direct conversations loaded from the API
+- server-computed member counts and last-message previews
+- message history per conversation
+- command composer scoped to the selected conversation and branch
+- branch selector driven by the conversation's branches
 - conversation search
 - global search
-- workspace members
-- conversation members
+- workspace members (local data until Phase 8)
+- conversation members loaded from the API
 - notifications panel
 - light/dark themes
 - collapsible conversation sidebar
@@ -128,7 +130,7 @@ gitping/
 │           ├── components/ui/    # avatar, presence dot, side panel
 │           ├── hooks/            # theme, sidebar, shortcuts, transient messages
 │           ├── lib/              # API client and formatting
-│           ├── data/             # seed data for the local slice
+│           ├── data/             # workspace members (local until Phase 8)
 │           ├── styles/           # tokens, globals, responsive, import order
 │           └── types/
 │
@@ -189,7 +191,7 @@ git commit -m "hello"
 React composer
 
         │
-        │ POST /commands
+        │ POST /conversations/:id/commands
         ▼
 
 Hono API
@@ -251,6 +253,104 @@ Example:
 }
 ```
 
+### Conversations
+
+```http
+GET /conversations
+```
+
+Returns the conversation list with counts and previews computed by SQLite:
+
+```json
+[
+  {
+    "id": "conv-engineering",
+    "name": "engineering",
+    "kind": "channel",
+    "memberCount": 4,
+    "preview": "hello from GitPing",
+    "unreadCount": 0
+  }
+]
+```
+
+`preview` is the last message text or `null`. `unreadCount` counts messages newer than the current user's `last_read_at`. Read state is not persisted yet, so the count reflects the seeded `NULL` value.
+
+```http
+POST /conversations
+```
+
+Request:
+
+```json
+{
+  "name": "architecture",
+  "kind": "channel"
+}
+```
+
+`kind` is `channel` or `direct`. The write creates the conversation, the creator's membership (and the named developer for a direct conversation when that handle exists), and a `main` branch in one transaction. Response is `201`:
+
+```json
+{
+  "conversation": {
+    "id": "conv-channel-architecture",
+    "name": "architecture",
+    "kind": "channel",
+    "memberCount": 1,
+    "preview": null,
+    "unreadCount": 0
+  }
+}
+```
+
+A duplicate or invalid body returns `400` with `{ "error": "..." }`.
+
+```http
+GET /conversations/:id/messages
+```
+
+Returns the conversation's messages ordered by `seq`, in the same shape as `GET /messages`.
+
+```http
+POST /conversations/:id/commands
+```
+
+Request (same body as `POST /commands`, with the conversation taken from the path):
+
+```json
+{
+  "input": "git commit -m \"hello from GitPing\"",
+  "branch": "main"
+}
+```
+
+`branch` defaults to `main`. The response is the `POST /commands` message shape. An unknown branch or invalid command returns `400`; an unknown conversation returns `404`.
+
+```http
+GET /conversations/:id/members
+```
+
+Returns members with their user fields:
+
+```json
+[
+  {
+    "id": "user-grok08",
+    "handle": "grok08",
+    "displayName": "grok08",
+    "avatar": "G",
+    "role": "owner"
+  }
+]
+```
+
+```http
+GET /conversations/:id/branches
+```
+
+Returns `id`, `name`, and `headMessageId` per branch, with `main` first. Every unknown conversation id on a nested route returns `404` with `{ "error": "Unknown conversation: ..." }`.
+
 ### Messages
 
 ```http
@@ -271,6 +371,8 @@ Returns persisted messages ordered by commit order. Each message is joined with 
 ]
 ```
 
+`GET /messages` returns every conversation's messages and remains for compatibility and simple scripts. The browser reads `GET /conversations/:id/messages` instead.
+
 ### Commands
 
 ```http
@@ -288,7 +390,7 @@ Request:
 }
 ```
 
-`conversation` and `branch` are optional and default to `engineering` on `main`. Response:
+`conversation` and `branch` are optional and default to `engineering` on `main`. The browser now uses `POST /conversations/:id/commands`; this route remains for compatibility and direct API use. Response:
 
 ```json
 {
@@ -339,7 +441,9 @@ message_events
 
 A message is a human-visible line plus the Git command that produced it. The parser output is stored on `git_commands.args`, and every write also records a `created` event so the history can grow into revert, stash, and merge semantics without rewriting rows.
 
-On first run the API creates the schema, seeds four users, six conversations, and eight branches, and backfills any rows from the pre-migration `messages` table into `engineering` on `main`.
+On first run the API creates the schema, seeds four users, six conversations, and eight branches, and backfills any rows from the pre-migration `messages` table into `engineering` on `main`. A conversation created later adds its membership and `main` branch inside one transaction, so a conversation never exists without a branch.
+
+Phase 3 needed no schema change. `PRAGMA user_version` stays at 1.
 
 Inspect a database file:
 
@@ -426,6 +530,26 @@ Read persisted messages:
 
 ```bash
 curl http://localhost:3000/messages
+```
+
+Read conversations, members, and branches:
+
+```bash
+curl http://localhost:3000/conversations
+curl http://localhost:3000/conversations/conv-engineering/members
+curl http://localhost:3000/conversations/conv-engineering/branches
+```
+
+Create a conversation and commit into it:
+
+```bash
+curl -X POST http://localhost:3000/conversations \
+  -H "Content-Type: application/json" \
+  -d '{"name":"architecture","kind":"channel"}'
+
+curl -X POST http://localhost:3000/conversations/conv-channel-architecture/commands \
+  -H "Content-Type: application/json" \
+  -d '{"input":"git commit -m \"first note\"","branch":"main"}'
 ```
 
 Every phase keeps browser evidence under `evidence/`. See `AGENTS.md` for the rule.

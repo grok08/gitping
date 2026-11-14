@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 
 const evidenceDirectory = resolve(
   import.meta.dirname,
-  "../../../../evidence/phase-2/screenshots",
+  "../../../../evidence/phase-3/screenshots",
 );
 
 async function saveScreenshot(page: Page, name: string) {
@@ -15,7 +15,7 @@ async function saveScreenshot(page: Page, name: string) {
 test("a commit typed in the browser is persisted through the domain model", async ({
   page,
 }) => {
-  const text = `phase two persists ${Date.now()}`;
+  const text = `phase three persists ${Date.now()}`;
 
   await page.goto("/");
   await expect(page.locator(".chat-title")).toContainText("engineering");

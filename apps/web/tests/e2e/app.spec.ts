@@ -4,8 +4,12 @@ import { openApp } from "./mock-api";
 test("loads messages from the API fixture", async ({ page }) => {
   await openApp(page);
 
-  await expect(page.getByText("Ready to ship?", { exact: true })).toBeVisible();
-  await expect(page.getByText('git commit -m "Ready to ship?"')).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("Ready to ship?", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText('git commit -m "Ready to ship?"'),
+  ).toBeVisible();
 });
 
 test("sends a Git command and renders the returned message", async ({ page }) => {

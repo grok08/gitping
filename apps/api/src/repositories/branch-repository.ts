@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
-import type { Branch } from "../types/domain";
+import type { Branch, NewBranch } from "../types/domain";
+import type { BranchSummary } from "../types/http";
 
 type BranchRow = {
   id: string;
@@ -10,6 +11,12 @@ type BranchRow = {
   created_at: string;
 };
 
+type BranchSummaryRow = {
+  id: string;
+  name: string;
+  head_message_id: string | null;
+};
+
 function toBranch(row: BranchRow): Branch {
   return {
     id: row.id,
@@ -18,6 +25,14 @@ function toBranch(row: BranchRow): Branch {
     headMessageId: row.head_message_id,
     createdFromBranchId: row.created_from_branch_id,
     createdAt: row.created_at,
+  };
+}
+
+function toBranchSummary(row: BranchSummaryRow): BranchSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    headMessageId: row.head_message_id,
   };
 }
 
@@ -39,6 +54,50 @@ export function createBranchRepository(db: Database) {
         .get({ $conversationId: conversationId, $name: name }) as BranchRow | null;
 
       return row ? toBranch(row) : null;
+    },
+
+    list(conversationId: string): BranchSummary[] {
+      const rows = db
+        .query(`
+          SELECT id, name, head_message_id
+          FROM branches
+          WHERE conversation_id = $conversationId
+          ORDER BY
+            CASE WHEN name = 'main' THEN 0 ELSE 1 END,
+            created_at ASC,
+            rowid ASC
+        `)
+        .all({ $conversationId: conversationId }) as BranchSummaryRow[];
+
+      return rows.map(toBranchSummary);
+    },
+
+    create(branch: NewBranch): void {
+      db.query(`
+        INSERT INTO branches (
+          id,
+          conversation_id,
+          name,
+          head_message_id,
+          created_from_branch_id,
+          created_at
+        )
+        VALUES (
+          $id,
+          $conversationId,
+          $name,
+          $headMessageId,
+          $createdFromBranchId,
+          $createdAt
+        )
+      `).run({
+        $id: branch.id,
+        $conversationId: branch.conversationId,
+        $name: branch.name,
+        $headMessageId: branch.headMessageId,
+        $createdFromBranchId: branch.createdFromBranchId,
+        $createdAt: branch.createdAt,
+      });
     },
 
     setHead(branchId: string, messageId: string): void {

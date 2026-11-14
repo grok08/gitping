@@ -4,7 +4,7 @@ export type WorkspaceMember = {
   name: string;
   role: string;
   avatar: string;
-  online: boolean;
+  online?: boolean;
 };
 
 export type ActiveMenu = "branch" | "more" | "profile" | null;

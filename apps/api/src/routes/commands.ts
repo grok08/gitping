@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { currentUserHandle } from "../current-user";
 import type { CommandService } from "../services/command-service";
 import type { CommandRequest } from "../types/http";
 
@@ -15,7 +16,7 @@ export function createCommandRoutes(commands: CommandService) {
     }
 
     const input = body.input?.trim() ?? "";
-    const author = body.author?.trim() || "grok08";
+    const author = body.author?.trim() || currentUserHandle;
 
     if (!input) {
       return c.json({ error: "Command is required" }, 400);

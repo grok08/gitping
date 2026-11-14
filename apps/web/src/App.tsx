@@ -4,21 +4,47 @@ import { ChatPage } from "./features/chat/ChatPage";
 import { ConversationSidebar } from "./features/conversations/ConversationSidebar";
 import { IconRail } from "./features/workspace/IconRail";
 import { WorkspaceModal } from "./features/workspace/WorkspaceModal";
-import {
-  branches,
-  initialConversations,
-  seedMessages,
-  workspaceMembers,
-} from "./data/seed";
+import { workspaceMembers } from "./data/seed";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useSidebar } from "./hooks/useSidebar";
 import { useTheme } from "./hooks/useTheme";
 import { useTransientMessage } from "./hooks/useTransientMessage";
-import { getMessages, sendCommand } from "./lib/api";
+import {
+  createConversation as createConversationRequest,
+  getConversationBranches,
+  getConversationMembers,
+  getConversationMessages,
+  getConversations,
+  sendConversationCommand,
+} from "./lib/api";
 import { formatTime } from "./lib/format";
-import type { Conversation } from "./types/conversation";
+import type {
+  ApiBranch,
+  ApiConversation,
+  ApiMember,
+  Conversation,
+} from "./types/conversation";
 import type { Message } from "./types/message";
-import type { ActiveMenu, ActivePanel, ModalKind } from "./types/workspace";
+import type { ActiveMenu, ActivePanel, ModalKind, WorkspaceMember } from "./types/workspace";
+
+function toConversation(conversation: ApiConversation): Conversation {
+  return {
+    id: conversation.id,
+    name: conversation.name,
+    type: conversation.kind,
+    members: conversation.memberCount,
+    preview: conversation.preview ?? undefined,
+    unread: conversation.unreadCount,
+  };
+}
+
+function toWorkspaceMember(member: ApiMember): WorkspaceMember {
+  return {
+    name: member.displayName || member.handle,
+    role: member.role,
+    avatar: member.avatar,
+  };
+}
 
 function buildMessage(
   id: string,
@@ -39,10 +65,14 @@ function buildMessage(
 }
 
 function App() {
-  const [conversations, setConversations] = useState(initialConversations);
-  const [activeConversationId, setActiveConversationId] = useState("engineering");
-  const [messages, setMessages] = useState<Message[]>(seedMessages);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [conversationMembers, setConversationMembers] = useState<
+    WorkspaceMember[]
+  >([]);
+  const [branches, setBranches] = useState<ApiBranch[]>([]);
   const [error, setError] = useState("");
   const [input, setInput] = useState("");
 
@@ -77,6 +107,8 @@ function App() {
       ) ?? conversations[0],
     [activeConversationId, conversations],
   );
+
+  const activeId = active?.id ?? "";
 
   const filteredMessages = useMemo(() => {
     const query = chatSearch.trim().toLowerCase();
@@ -125,42 +157,108 @@ function App() {
   });
 
   useEffect(() => {
-    let active = true;
+    let cancelled = false;
 
-    async function loadMessages() {
+    async function loadConversations() {
+      try {
+        const data = await getConversations();
+
+        if (cancelled) {
+          return;
+        }
+
+        const list = data.map(toConversation);
+
+        setConversations(list);
+        setActiveConversationId((current) => {
+          if (current && list.some((conversation) => conversation.id === current)) {
+            return current;
+          }
+
+          return (
+            list.find((conversation) => conversation.name === "engineering")
+              ?.id ??
+            list[0]?.id ??
+            ""
+          );
+        });
+      } catch {
+        if (!cancelled) {
+          setToast("Unable to load conversations");
+        }
+      }
+    }
+
+    void loadConversations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setToast]);
+
+  useEffect(() => {
+    if (!activeId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadConversation() {
       setLoadingMessages(true);
+      setMessages([]);
+      setBranches([]);
+      setConversationMembers([]);
+      setBranch("main");
 
       try {
-        const data = await getMessages();
+        const [messageData, branchData, memberData] = await Promise.all([
+          getConversationMessages(activeId),
+          getConversationBranches(activeId),
+          getConversationMembers(activeId),
+        ]);
 
-        if (active && data.length > 0) {
-          setMessages(
-            data.map((message) =>
-              buildMessage(
-                message.id,
-                message.author,
-                message.text,
-                message.command,
-                message.created_at,
-              ),
-            ),
-          );
+        if (cancelled) {
+          return;
         }
+
+        setMessages(
+          messageData.map((message) =>
+            buildMessage(
+              message.id,
+              message.author,
+              message.text,
+              message.command,
+              message.created_at,
+            ),
+          ),
+        );
+
+        setBranches(branchData);
+        setBranch((current) =>
+          branchData.some((item) => item.name === current)
+            ? current
+            : (branchData.find((item) => item.name === "main")?.name ??
+              branchData[0]?.name ??
+              "main"),
+        );
+        setConversationMembers(memberData.map(toWorkspaceMember));
       } catch {
-        // Keep the seed messages when the API is not running.
+        if (!cancelled) {
+          setToast("Unable to load conversation");
+        }
       } finally {
-        if (active) {
+        if (!cancelled) {
           setLoadingMessages(false);
         }
       }
     }
 
-    void loadMessages();
+    void loadConversation();
 
     return () => {
-      active = false;
+      cancelled = true;
     };
-  }, []);
+  }, [activeId, setToast]);
 
   useEffect(() => {
     const messageList = messageListRef.current;
@@ -239,6 +337,7 @@ function App() {
 
   function selectConversation(id: string) {
     setActiveConversationId(id);
+    setBranch("main");
 
     if (window.matchMedia("(max-width: 760px)").matches) {
       setSidebarOpen(false);
@@ -269,14 +368,14 @@ function App() {
 
     const value = input.trim();
 
-    if (!value) {
+    if (!value || !activeId) {
       return;
     }
 
     setError("");
 
     try {
-      const message = await sendCommand(value, "grok08");
+      const message = await sendConversationCommand(activeId, value, branch);
 
       setMessages((current) => [
         ...current,
@@ -291,9 +390,17 @@ function App() {
 
       setConversations((current) =>
         current.map((conversation) =>
-          conversation.id === activeConversationId
+          conversation.id === activeId
             ? { ...conversation, preview: message.text }
             : conversation,
+        ),
+      );
+
+      setBranches((current) =>
+        current.map((item) =>
+          item.name === branch
+            ? { ...item, headMessageId: message.id }
+            : item,
         ),
       );
 
@@ -311,39 +418,33 @@ function App() {
     }
   }
 
-  function createConversation() {
+  async function handleCreateConversation() {
     const name = newConversationName.trim();
 
     if (!name) {
       return;
     }
 
-    const id = name.toLowerCase().replace(/\s+/g, "-");
+    const kind = modal === "direct" ? "direct" : "channel";
 
-    if (conversations.some((conversation) => conversation.id === id)) {
-      setToast("That conversation already exists");
-      return;
+    try {
+      const created = await createConversationRequest({ name, kind });
+
+      setConversations((current) => [...current, toConversation(created)]);
+      selectConversation(created.id);
+      setNewConversationName("");
+      closeModal();
+
+      setToast(
+        kind === "direct" ? `Started conversation with ${created.name}` : `Created #${created.name}`,
+      );
+    } catch (createError) {
+      setToast(
+        createError instanceof Error
+          ? createError.message
+          : "Unable to create conversation",
+      );
     }
-
-    const isDirect = modal === "direct";
-
-    const conversation: Conversation = {
-      id,
-      name,
-      type: isDirect ? "direct" : "channel",
-      members: isDirect ? undefined : 1,
-      preview: "No messages yet",
-    };
-
-    setConversations((current) => [...current, conversation]);
-
-    setActiveConversationId(id);
-    setNewConversationName("");
-    closeModal();
-
-    setToast(
-      isDirect ? `Started conversation with ${name}` : `Created #${name}`,
-    );
   }
 
   async function copyChannelLink() {
@@ -403,7 +504,7 @@ function App() {
 
       <ConversationSidebar
         conversations={conversations}
-        activeConversationId={activeConversationId}
+        activeConversationId={activeId}
         search={globalSearch}
         searchInputRef={globalSearchRef}
         onSearchChange={setGlobalSearch}
@@ -430,13 +531,14 @@ function App() {
         branchNotice={branchNotice}
         sidebarOpen={sidebarOpen}
         branch={branch}
-        branches={branches}
+        branches={branches.map((item) => item.name)}
         activeMenu={activeMenu}
         searchOpen={chatSearchOpen}
         searchQuery={chatSearch}
         panel={panel}
         panelClosing={panelClosing}
         workspaceMembers={workspaceMembers}
+        conversationMembers={conversationMembers}
         messageListRef={messageListRef}
         searchInputRef={chatSearchRef}
         composerInputRef={composerRef}
@@ -474,7 +576,7 @@ function App() {
           theme={theme}
           name={newConversationName}
           onNameChange={setNewConversationName}
-          onCreate={createConversation}
+          onCreate={() => void handleCreateConversation()}
           onToggleTheme={toggleTheme}
           onClose={closeModal}
           onClosed={() => {

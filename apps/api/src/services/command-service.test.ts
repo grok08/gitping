@@ -98,6 +98,7 @@ describe("command service", () => {
 
     expect(result).toEqual({
       ok: false,
+      reason: "invalid_command",
       error: 'For the first message flow, use: git commit -m "message"',
     });
     expect(messages.list()).toHaveLength(0);
@@ -117,13 +118,67 @@ describe("command service", () => {
       commands.send('git commit -m "nowhere"', "grok08", {
         conversation: "missing",
       }),
-    ).toEqual({ ok: false, error: "Unknown conversation: missing" });
+    ).toEqual({
+      ok: false,
+      reason: "unknown_conversation",
+      error: "Unknown conversation: missing",
+    });
 
     expect(
       commands.send('git commit -m "nowhere"', "grok08", {
         branch: "missing",
       }),
-    ).toEqual({ ok: false, error: "Unknown branch: missing" });
+    ).toEqual({
+      ok: false,
+      reason: "unknown_branch",
+      error: "Unknown branch: missing",
+    });
+  });
+
+  test("resolves a conversation by id for the conversation-scoped route", () => {
+    const { db, messages, commands } = createTestCommandService();
+
+    const result = commands.send('git commit -m "by id"', "grok08", {
+      conversationId: "conv-engineering",
+      branch: "weekend",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(messages.list("conv-engineering")).toHaveLength(1);
+
+    const row = db
+      .query("SELECT branch_id FROM messages")
+      .get() as { branch_id: string };
+
+    expect(row.branch_id).toBe("branch-conv-engineering-weekend");
+  });
+
+  test("rejects an unknown conversation id before parsing the command", () => {
+    const { messages, commands } = createTestCommandService();
+
+    expect(
+      commands.send("git log", "grok08", { conversationId: "conv-missing" }),
+    ).toEqual({
+      ok: false,
+      reason: "unknown_conversation",
+      error: "Unknown conversation: conv-missing",
+    });
+    expect(messages.list()).toHaveLength(0);
+  });
+
+  test("rejects an unknown branch for a known conversation id", () => {
+    const { commands } = createTestCommandService();
+
+    expect(
+      commands.send('git commit -m "nowhere"', "grok08", {
+        conversationId: "conv-engineering",
+        branch: "release",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "unknown_branch",
+      error: "Unknown branch: release",
+    });
   });
 
   test("lists messages in commit order", () => {

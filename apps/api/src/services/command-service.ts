@@ -4,16 +4,23 @@ import type { BranchRepository } from "../repositories/branch-repository";
 import type { ConversationRepository } from "../repositories/conversation-repository";
 import type { MessageRepository } from "../repositories/message-repository";
 import type { UserRepository } from "../repositories/user-repository";
+import type { Conversation } from "../types/domain";
 import type { MessageRecord, MessageRow } from "../types/http";
 
 export type SendCommandOptions = {
   conversation?: string;
+  conversationId?: string;
   branch?: string;
 };
 
+export type CommandFailureReason =
+  | "invalid_command"
+  | "unknown_conversation"
+  | "unknown_branch";
+
 export type SendCommandResult =
   | { ok: true; message: MessageRecord }
-  | { ok: false; error: string };
+  | { ok: false; reason: CommandFailureReason; error: string };
 
 export type CommandServiceDependencies = {
   db: Database;
@@ -26,8 +33,11 @@ export type CommandServiceDependencies = {
 const defaultConversation = "engineering";
 const defaultBranch = "main";
 
-function reject(error: string): SendCommandResult {
-  return { ok: false, error };
+function reject(
+  reason: CommandFailureReason,
+  error: string,
+): SendCommandResult {
+  return { ok: false, reason, error };
 }
 
 export function createCommandService({
@@ -43,35 +53,47 @@ export function createCommandService({
       author: string,
       options: SendCommandOptions = {},
     ): SendCommandResult {
+      let conversation: Conversation | null;
+      let conversationLabel: string;
+
+      if (options.conversationId) {
+        conversationLabel = options.conversationId;
+        conversation = conversations.findById(options.conversationId);
+      } else {
+        conversationLabel = options.conversation ?? defaultConversation;
+        conversation = conversations.findByKindAndName(
+          "channel",
+          conversationLabel,
+        );
+      }
+
+      if (!conversation) {
+        return reject(
+          "unknown_conversation",
+          `Unknown conversation: ${conversationLabel}`,
+        );
+      }
+
       let parsed: ReturnType<typeof parseCommand>;
 
       try {
         parsed = parseCommand(input);
       } catch {
-        return reject("Unsupported or invalid Git command");
+        return reject("invalid_command", "Unsupported or invalid Git command");
       }
 
       if (parsed.type !== "commit") {
         return reject(
+          "invalid_command",
           'For the first message flow, use: git commit -m "message"',
         );
-      }
-
-      const conversationName = options.conversation ?? defaultConversation;
-      const conversation = conversations.findByKindAndName(
-        "channel",
-        conversationName,
-      );
-
-      if (!conversation) {
-        return reject(`Unknown conversation: ${conversationName}`);
       }
 
       const branchName = options.branch ?? defaultBranch;
       const branch = branches.find(conversation.id, branchName);
 
       if (!branch) {
-        return reject(`Unknown branch: ${branchName}`);
+        return reject("unknown_branch", `Unknown branch: ${branchName}`);
       }
 
       const write = db.transaction((): MessageRow => {

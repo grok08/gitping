@@ -1,0 +1,313 @@
+$ bun run apps/api/scripts/inspect-db.ts "apps/web/test-results/gitping-e2e.db"
+database: apps/web/test-results/gitping-e2e.db
+schema version: 1
+
+## row counts
+branches: 10
+conversation_members: 23
+conversations: 8
+git_commands: 2
+message_events: 2
+messages: 2
+users: 4
+
+## users
+[
+  {
+    "handle": "alice",
+    "display_name": "alice",
+    "role": "developer"
+  },
+  {
+    "handle": "grok08",
+    "display_name": "grok08",
+    "role": "owner"
+  },
+  {
+    "handle": "maria",
+    "display_name": "maria",
+    "role": "developer"
+  },
+  {
+    "handle": "rahul",
+    "display_name": "rahul",
+    "role": "developer"
+  }
+]
+
+## conversations
+[
+  {
+    "id": "conv-engineering",
+    "name": "engineering",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-general",
+    "name": "general",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-three-mwgmbhz8",
+    "name": "phase-three-mwgmbhz8",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-random",
+    "name": "random",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-weekend",
+    "name": "weekend",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-alice",
+    "name": "alice",
+    "kind": "direct"
+  },
+  {
+    "id": "conv-direct-maria",
+    "name": "maria",
+    "kind": "direct"
+  },
+  {
+    "id": "conv-rahul",
+    "name": "rahul",
+    "kind": "direct"
+  }
+]
+
+## conversation members
+[
+  {
+    "conversation": "alice",
+    "member": "alice",
+    "role": "developer"
+  },
+  {
+    "conversation": "alice",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "engineering",
+    "member": "alice",
+    "role": "developer"
+  },
+  {
+    "conversation": "engineering",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "engineering",
+    "member": "maria",
+    "role": "developer"
+  },
+  {
+    "conversation": "engineering",
+    "member": "rahul",
+    "role": "developer"
+  },
+  {
+    "conversation": "general",
+    "member": "alice",
+    "role": "developer"
+  },
+  {
+    "conversation": "general",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "general",
+    "member": "maria",
+    "role": "developer"
+  },
+  {
+    "conversation": "general",
+    "member": "rahul",
+    "role": "developer"
+  },
+  {
+    "conversation": "maria",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "maria",
+    "member": "maria",
+    "role": "developer"
+  },
+  {
+    "conversation": "phase-three-mwgmbhz8",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "rahul",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "rahul",
+    "member": "rahul",
+    "role": "developer"
+  },
+  {
+    "conversation": "random",
+    "member": "alice",
+    "role": "developer"
+  },
+  {
+    "conversation": "random",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "random",
+    "member": "maria",
+    "role": "developer"
+  },
+  {
+    "conversation": "random",
+    "member": "rahul",
+    "role": "developer"
+  },
+  {
+    "conversation": "weekend",
+    "member": "alice",
+    "role": "developer"
+  },
+  {
+    "conversation": "weekend",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "weekend",
+    "member": "maria",
+    "role": "developer"
+  },
+  {
+    "conversation": "weekend",
+    "member": "rahul",
+    "role": "developer"
+  }
+]
+
+## branches
+[
+  {
+    "id": "branch-conv-alice-main",
+    "conversation": "alice",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-engineering-feature-ui",
+    "conversation": "engineering",
+    "branch": "feature-ui",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-engineering-main",
+    "conversation": "engineering",
+    "branch": "main",
+    "head": "20465414"
+  },
+  {
+    "id": "branch-conv-engineering-weekend",
+    "conversation": "engineering",
+    "branch": "weekend",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-general-main",
+    "conversation": "general",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-direct-maria-main",
+    "conversation": "maria",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-channel-phase-three-mwgmbhz8-main",
+    "conversation": "phase-three-mwgmbhz8",
+    "branch": "main",
+    "head": "61fb5c32"
+  },
+  {
+    "id": "branch-conv-rahul-main",
+    "conversation": "rahul",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-random-main",
+    "conversation": "random",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-weekend-main",
+    "conversation": "weekend",
+    "branch": "main",
+    "head": "-"
+  }
+]
+
+## messages
+[
+  {
+    "id": "20465414-8d1c-41dc-88fa-24fd4d701d0a",
+    "author": "grok08",
+    "conversation": "engineering",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase three persists 1794673591864",
+    "created_at": "2026-11-14T16:26:33.830Z"
+  },
+  {
+    "id": "61fb5c32-ca26-49fb-b4d9-6a803a7341f0",
+    "author": "grok08",
+    "conversation": "phase-three-mwgmbhz8",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase three persists mwgmbhz8",
+    "created_at": "2026-11-14T16:26:34.724Z"
+  }
+]
+
+## git commands
+[
+  {
+    "message_id": "20465414-8d1c-41dc-88fa-24fd4d701d0a",
+    "verb": "commit",
+    "raw": "git commit -m \"phase three persists 1794673591864\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase three persists 1794673591864\",\"amend\":false}"
+  },
+  {
+    "message_id": "61fb5c32-ca26-49fb-b4d9-6a803a7341f0",
+    "verb": "commit",
+    "raw": "git commit -m \"phase three persists mwgmbhz8\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase three persists mwgmbhz8\",\"amend\":false}"
+  }
+]
+
+## message events
+[
+  {
+    "message_id": "20465414-8d1c-41dc-88fa-24fd4d701d0a",
+    "type": "created"
+  },
+  {
+    "message_id": "61fb5c32-ca26-49fb-b4d9-6a803a7341f0",
+    "type": "created"
+  }
+]

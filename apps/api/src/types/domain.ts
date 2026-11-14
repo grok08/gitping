@@ -64,6 +64,23 @@ export type MessageEvent = {
   createdAt: string;
 };
 
+export type NewConversation = {
+  id: string;
+  name: string;
+  kind: ConversationKind;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type NewBranch = {
+  id: string;
+  conversationId: string;
+  name: string;
+  headMessageId: string | null;
+  createdFromBranchId: string | null;
+  createdAt: string;
+};
+
 export type NewMessage = {
   id: string;
   conversationId: string;

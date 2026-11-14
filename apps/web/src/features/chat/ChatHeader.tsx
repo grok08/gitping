@@ -61,8 +61,10 @@ export function ChatHeader({
           </div>
 
           <div className="chat-meta">
-            {conversation?.members
-              ? `${conversation.members} members`
+            {conversation?.type === "channel"
+              ? `${conversation.members ?? 0} ${
+                  conversation.members === 1 ? "member" : "members"
+                }`
               : "Direct conversation"}
 
             <span className="meta-dot">•</span>

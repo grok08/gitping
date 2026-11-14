@@ -29,7 +29,9 @@ export function MemberList({ members, variant }: MemberListProps) {
               </span>
             </div>
 
-            <PresenceDot online={member.online} />
+            {member.online === undefined ? null : (
+              <PresenceDot online={member.online} />
+            )}
           </div>
         );
       })}

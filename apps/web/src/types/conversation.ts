@@ -1,8 +1,33 @@
+export type ConversationKind = "channel" | "direct";
+
 export type Conversation = {
   id: string;
   name: string;
-  type: "channel" | "direct";
+  type: ConversationKind;
   unread?: number;
   members?: number;
   preview?: string;
+};
+
+export type ApiConversation = {
+  id: string;
+  name: string;
+  kind: ConversationKind;
+  memberCount: number;
+  preview: string | null;
+  unreadCount: number;
+};
+
+export type ApiBranch = {
+  id: string;
+  name: string;
+  headMessageId: string | null;
+};
+
+export type ApiMember = {
+  id: string;
+  handle: string;
+  displayName: string;
+  avatar: string;
+  role: "owner" | "developer";
 };

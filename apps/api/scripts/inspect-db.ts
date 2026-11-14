@@ -50,7 +50,25 @@ print(
 
 print(
   "conversations",
-  db.query("SELECT name, kind FROM conversations ORDER BY kind, name").all(),
+  db
+    .query("SELECT id, name, kind FROM conversations ORDER BY kind, name")
+    .all(),
+);
+
+print(
+  "conversation members",
+  db
+    .query(`
+      SELECT
+        c.name AS conversation,
+        u.handle AS member,
+        u.role
+      FROM conversation_members m
+      JOIN conversations c ON c.id = m.conversation_id
+      JOIN users u ON u.id = m.user_id
+      ORDER BY c.name, m.joined_at, u.handle
+    `)
+    .all(),
 );
 
 print(
@@ -58,6 +76,7 @@ print(
   db
     .query(`
       SELECT
+        b.id,
         c.name AS conversation,
         b.name AS branch,
         COALESCE(substr(b.head_message_id, 1, 8), '-') AS head

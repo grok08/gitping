@@ -6,6 +6,7 @@ import { createConversationRepository } from "./repositories/conversation-reposi
 import { createMessageRepository } from "./repositories/message-repository";
 import { createUserRepository } from "./repositories/user-repository";
 import { createCommandService } from "./services/command-service";
+import { createConversationService } from "./services/conversation-service";
 
 export function createTestDatabase(): Database {
   const db = openDatabase(":memory:");
@@ -31,6 +32,21 @@ export function createTestCommandService(db: Database = createTestDatabase()) {
       users: createUserRepository(db),
       conversations: createConversationRepository(db),
       branches: createBranchRepository(db),
+    }),
+  };
+}
+
+export function createTestConversationService(
+  db: Database = createTestDatabase(),
+) {
+  return {
+    db,
+    conversations: createConversationService({
+      db,
+      users: createUserRepository(db),
+      conversations: createConversationRepository(db),
+      branches: createBranchRepository(db),
+      messages: createMessageRepository(db),
     }),
   };
 }

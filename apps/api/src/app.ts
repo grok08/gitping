@@ -6,7 +6,9 @@ import { createConversationRepository } from "./repositories/conversation-reposi
 import { createMessageRepository } from "./repositories/message-repository";
 import { createUserRepository } from "./repositories/user-repository";
 import { createCommandService } from "./services/command-service";
+import { createConversationService } from "./services/conversation-service";
 import { createCommandRoutes } from "./routes/commands";
+import { createConversationRoutes } from "./routes/conversations";
 import { createHealthRoutes } from "./routes/health";
 import { createMessageRoutes } from "./routes/messages";
 
@@ -18,13 +20,25 @@ const allowedOrigins = [
 ];
 
 export function createApp(db: Database) {
+  const users = createUserRepository(db);
+  const conversations = createConversationRepository(db);
+  const branches = createBranchRepository(db);
   const messages = createMessageRepository(db);
+
   const commands = createCommandService({
     db,
+    users,
+    conversations,
+    branches,
     messages,
-    users: createUserRepository(db),
-    conversations: createConversationRepository(db),
-    branches: createBranchRepository(db),
+  });
+
+  const conversationService = createConversationService({
+    db,
+    users,
+    conversations,
+    branches,
+    messages,
   });
 
   const app = new Hono();
@@ -41,6 +55,7 @@ export function createApp(db: Database) {
   app.route("/", createHealthRoutes(db));
   app.route("/", createMessageRoutes(messages));
   app.route("/", createCommandRoutes(commands));
+  app.route("/", createConversationRoutes(conversationService, commands));
 
   return app;
 }

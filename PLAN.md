@@ -30,7 +30,9 @@ Current foundation includes:
 - `/health`
 - `/messages`
 - `/commands`
+- `/conversations` and per-conversation messages, members, and branches
 - Git command based message composer
+- Persistent channels and direct messages, created through the UI
 - Light/dark themes
 - Collapsible conversation sidebar
 - Focus-mode chat layout
@@ -46,7 +48,8 @@ The next work should move from "single local vertical slice" to "real multi-user
 | --- | --- | --- |
 | 1. Stabilize the foundation | Complete | `evidence/phase-1/README.md` |
 | 2. Model GitPing properly | Complete | `evidence/phase-2/README.md` |
-| 3 through 12 | Not started | |
+| 3. Real conversation persistence | Complete | `evidence/phase-3/README.md` |
+| 4 through 12 | Not started | |
 
 ---
 
