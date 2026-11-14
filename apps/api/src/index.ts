@@ -1,10 +1,10 @@
 import { createApp } from "./app";
-import { defaultDatabasePath, initializeSchema, openDatabase } from "./db";
+import { defaultDatabasePath, initializeDatabase, openDatabase } from "./db";
 
 const port = Number(process.env.PORT ?? 3000);
 const db = openDatabase(process.env.GITPING_DB_PATH ?? defaultDatabasePath());
 
-initializeSchema(db);
+initializeDatabase(db);
 
 const app = createApp(db);
 

@@ -45,7 +45,8 @@ The next work should move from "single local vertical slice" to "real multi-user
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | 1. Stabilize the foundation | Complete | `evidence/phase-1/README.md` |
-| 2 through 12 | Not started | |
+| 2. Model GitPing properly | Complete | `evidence/phase-2/README.md` |
+| 3 through 12 | Not started | |
 
 ---
 

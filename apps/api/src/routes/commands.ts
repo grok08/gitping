@@ -21,7 +21,10 @@ export function createCommandRoutes(commands: CommandService) {
       return c.json({ error: "Command is required" }, 400);
     }
 
-    const result = commands.send(input, author);
+    const result = commands.send(input, author, {
+      conversation: body.conversation,
+      branch: body.branch,
+    });
 
     if (!result.ok) {
       return c.json({ error: result.error }, 400);

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Database } from "bun:sqlite";
+import { schemaVersion } from "../migrations";
 
 export function createHealthRoutes(db: Database) {
   const routes = new Hono();
@@ -10,6 +11,7 @@ export function createHealthRoutes(db: Database) {
     return c.json({
       status: "ok",
       database: result?.ok === 1,
+      schemaVersion: schemaVersion(db),
     });
   });
 

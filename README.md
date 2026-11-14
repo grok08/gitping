@@ -22,7 +22,7 @@ The goal is to make Git concepts useful for communication without making the app
 
 ## Current Status
 
-GitPing currently has a working first end-to-end vertical slice:
+GitPing currently has a working first end-to-end vertical slice, now backed by a Git-native domain model:
 
 ```text
 React
@@ -109,10 +109,13 @@ gitping/
 │
 ├── apps/
 │   ├── api/
+│   │   ├── scripts/              # test server and database inspector
 │   │   └── src/
 │   │       ├── index.ts          # server bootstrap
 │   │       ├── app.ts            # route assembly
 │   │       ├── db.ts             # SQLite connection
+│   │       ├── migrations.ts     # versioned schema
+│   │       ├── seed.ts           # workspace seed data
 │   │       ├── routes/           # HTTP mapping only
 │   │       ├── services/         # business logic
 │   │       ├── repositories/     # SQL
@@ -243,7 +246,8 @@ Example:
 ```json
 {
   "status": "ok",
-  "database": true
+  "database": true,
+  "schemaVersion": 1
 }
 ```
 
@@ -253,7 +257,19 @@ Example:
 GET /messages
 ```
 
-Returns persisted messages ordered chronologically.
+Returns persisted messages ordered by commit order. Each message is joined with its author and Git command, so the response keeps the original shape:
+
+```json
+[
+  {
+    "id": "...",
+    "author": "grok08",
+    "text": "hello from GitPing",
+    "command": "git commit",
+    "created_at": "..."
+  }
+]
+```
 
 ### Commands
 
@@ -266,11 +282,13 @@ Request:
 ```json
 {
   "input": "git commit -m \"hello from GitPing\"",
-  "author": "grok08"
+  "author": "grok08",
+  "conversation": "engineering",
+  "branch": "main"
 }
 ```
 
-Response:
+`conversation` and `branch` are optional and default to `engineering` on `main`. Response:
 
 ```json
 {
@@ -294,18 +312,40 @@ The development SQLite database is stored under:
 apps/api/data/gitping.db
 ```
 
-The initial message model contains:
+The database uses a versioned migration runner (`PRAGMA user_version`). Schema version 1 is the Git-native domain model:
 
 ```text
+users
+├── id, handle, display_name, avatar, role, created_at
+
+conversations
+├── id, name, kind (channel | direct), created_by, created_at
+
+conversation_members
+├── conversation_id, user_id, joined_at, last_read_at
+
+branches
+├── id, conversation_id, name, head_message_id, created_from_branch_id, created_at
+
 messages
-├── id
-├── author
-├── text
-├── command
-└── created_at
+├── seq (commit order), id, conversation_id, branch_id, author_id, text, created_at
+
+git_commands
+├── id, message_id, verb, raw, args (parsed command as JSON), parsed_at
+
+message_events
+├── id, message_id, type (created | reverted | stashed | merged), payload, created_at
 ```
 
-The database is created automatically by the API when necessary.
+A message is a human-visible line plus the Git command that produced it. The parser output is stored on `git_commands.args`, and every write also records a `created` event so the history can grow into revert, stash, and merge semantics without rewriting rows.
+
+On first run the API creates the schema, seeds four users, six conversations, and eight branches, and backfills any rows from the pre-migration `messages` table into `engineering` on `main`.
+
+Inspect a database file:
+
+```bash
+bun run db:inspect apps/api/data/gitping.db
+```
 
 ---
 

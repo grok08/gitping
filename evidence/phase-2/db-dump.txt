@@ -1,0 +1,139 @@
+$ bun run apps/api/scripts/inspect-db.ts "apps/web/test-results/gitping-e2e.db"
+database: apps/web/test-results/gitping-e2e.db
+schema version: 1
+
+## row counts
+branches: 8
+conversation_members: 20
+conversations: 6
+git_commands: 1
+message_events: 1
+messages: 1
+users: 4
+
+## users
+[
+  {
+    "handle": "alice",
+    "display_name": "alice",
+    "role": "developer"
+  },
+  {
+    "handle": "grok08",
+    "display_name": "grok08",
+    "role": "owner"
+  },
+  {
+    "handle": "maria",
+    "display_name": "maria",
+    "role": "developer"
+  },
+  {
+    "handle": "rahul",
+    "display_name": "rahul",
+    "role": "developer"
+  }
+]
+
+## conversations
+[
+  {
+    "name": "engineering",
+    "kind": "channel"
+  },
+  {
+    "name": "general",
+    "kind": "channel"
+  },
+  {
+    "name": "random",
+    "kind": "channel"
+  },
+  {
+    "name": "weekend",
+    "kind": "channel"
+  },
+  {
+    "name": "alice",
+    "kind": "direct"
+  },
+  {
+    "name": "rahul",
+    "kind": "direct"
+  }
+]
+
+## branches
+[
+  {
+    "conversation": "alice",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "conversation": "engineering",
+    "branch": "feature-ui",
+    "head": "-"
+  },
+  {
+    "conversation": "engineering",
+    "branch": "main",
+    "head": "fce70654"
+  },
+  {
+    "conversation": "engineering",
+    "branch": "weekend",
+    "head": "-"
+  },
+  {
+    "conversation": "general",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "conversation": "rahul",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "conversation": "random",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "conversation": "weekend",
+    "branch": "main",
+    "head": "-"
+  }
+]
+
+## messages
+[
+  {
+    "id": "fce70654-03b7-4fd2-aba3-2d5af17c712d",
+    "author": "grok08",
+    "conversation": "engineering",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase two persists 1794671057080",
+    "created_at": "2026-11-14T15:44:19.070Z"
+  }
+]
+
+## git commands
+[
+  {
+    "message_id": "fce70654-03b7-4fd2-aba3-2d5af17c712d",
+    "verb": "commit",
+    "raw": "git commit -m \"phase two persists 1794671057080\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase two persists 1794671057080\",\"amend\":false}"
+  }
+]
+
+## message events
+[
+  {
+    "message_id": "fce70654-03b7-4fd2-aba3-2d5af17c712d",
+    "type": "created"
+  }
+]

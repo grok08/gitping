@@ -1,3 +1,11 @@
+export type MessageRow = {
+  id: string;
+  author: string;
+  text: string;
+  command: string;
+  created_at: string;
+};
+
 export type MessageRecord = {
   id: string;
   author: string;
@@ -9,6 +17,8 @@ export type MessageRecord = {
 export type CommandRequest = {
   input?: string;
   author?: string;
+  conversation?: string;
+  branch?: string;
 };
 
 export type CommandResponse = {

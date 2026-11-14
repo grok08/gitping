@@ -1,6 +1,8 @@
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { Database } from "bun:sqlite";
+import { migrate } from "./migrations";
+import { seedWorkspace } from "./seed";
 
 export function openDatabase(path: string): Database {
   if (path !== ":memory:") {
@@ -13,21 +15,9 @@ export function openDatabase(path: string): Database {
   return db;
 }
 
-export function initializeSchema(db: Database): void {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id TEXT PRIMARY KEY,
-      author TEXT NOT NULL,
-      text TEXT NOT NULL,
-      command TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    )
-  `);
-
-  db.run(`
-    CREATE INDEX IF NOT EXISTS idx_messages_created_at
-    ON messages(created_at)
-  `);
+export function initializeDatabase(db: Database): void {
+  migrate(db);
+  seedWorkspace(db);
 }
 
 export function defaultDatabasePath(): string {
