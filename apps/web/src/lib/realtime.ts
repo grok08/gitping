@@ -28,7 +28,8 @@ export function pingFrame(): string {
 
 /**
  * Parses a server frame without trusting it. Anything that is not a complete
- * `message.created` payload is ignored instead of crashing the UI.
+ * `message.created` or `message.updated` payload is ignored instead of
+ * crashing the UI.
  */
 export function parseMessageEvent(raw: string): MessageEventPayload | null {
   let parsed: unknown;
@@ -50,7 +51,7 @@ export function parseMessageEvent(raw: string): MessageEventPayload | null {
   };
 
   if (
-    frame.type !== "message.created" ||
+    (frame.type !== "message.created" && frame.type !== "message.updated") ||
     typeof frame.conversationId !== "string"
   ) {
     return null;
@@ -75,7 +76,7 @@ export function parseMessageEvent(raw: string): MessageEventPayload | null {
   }
 
   return {
-    type: "message.created",
+    type: frame.type,
     conversationId: frame.conversationId,
     seq: message.seq,
     message: {
@@ -85,6 +86,8 @@ export function parseMessageEvent(raw: string): MessageEventPayload | null {
       text: message.text,
       command: message.command,
       createdAt: message.createdAt,
+      reverted: message.reverted === true,
+      stashed: message.stashed === true,
     },
   };
 }

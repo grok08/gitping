@@ -355,6 +355,63 @@ describe("realtime delivery", () => {
     }
   });
 
+  test("broadcasts a revert to both clients in the conversation and no other", async () => {
+    const harness = startHarness();
+    const first = await harness.connect("conv-engineering");
+    const second = await harness.connect("conv-engineering");
+    const elsewhere = await harness.connect("conv-weekend");
+
+    try {
+      const commitResponse = await harness.post(
+        "/conversations/conv-engineering/commands",
+        { input: 'git commit -m "revert this"' },
+      );
+
+      expect(commitResponse.status).toBe(201);
+
+      const commit = await sentMessage(commitResponse);
+
+      await first.next();
+      await second.next();
+
+      const revertResponse = await harness.post(
+        "/conversations/conv-engineering/commands",
+        { input: `git revert ${commit.id.slice(0, 8)}` },
+      );
+
+      expect(revertResponse.status).toBe(201);
+
+      for (const client of [first, second]) {
+        const created = await client.next();
+
+        expect(created.type).toBe("message.created");
+        expect(created.conversationId).toBe("conv-engineering");
+        expect(created.message).toMatchObject({
+          text: 'Revert "revert this"',
+          command: "git revert",
+        });
+
+        const updated = await client.next();
+
+        expect(updated.type).toBe("message.updated");
+        expect(updated.conversationId).toBe("conv-engineering");
+        expect(updated.seq).toBe(commit.seq);
+        expect(updated.message).toMatchObject({
+          id: commit.id,
+          reverted: true,
+          stashed: false,
+        });
+      }
+
+      expect(await elsewhere.drain()).toEqual([]);
+    } finally {
+      first.close();
+      second.close();
+      elsewhere.close();
+      harness.stop();
+    }
+  });
+
   test("removes a client from the registry when it disconnects", async () => {
     const harness = startHarness();
     const client = await harness.connect("conv-engineering");

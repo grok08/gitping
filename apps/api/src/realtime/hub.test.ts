@@ -28,6 +28,8 @@ function messageCreated(conversationId: string, seq: number): MessageCreatedEven
       text: `note ${seq}`,
       command: "git commit",
       createdAt: "2026-10-01T09:00:00.000Z",
+      reverted: false,
+      stashed: false,
     },
   };
 }

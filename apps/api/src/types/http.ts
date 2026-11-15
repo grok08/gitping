@@ -7,6 +7,8 @@ export type MessageRow = {
   text: string;
   command: string;
   created_at: string;
+  reverted: boolean;
+  stashed: boolean;
 };
 
 export type MessageRecord = {
@@ -16,6 +18,8 @@ export type MessageRecord = {
   text: string;
   command: string;
   createdAt: string;
+  reverted: boolean;
+  stashed: boolean;
 };
 
 export type CommandRequest = {

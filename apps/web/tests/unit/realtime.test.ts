@@ -16,6 +16,8 @@ const frame = JSON.stringify({
     text: "live",
     command: "git commit",
     createdAt: "2026-10-01T09:00:00.000Z",
+    reverted: false,
+    stashed: false,
   },
 });
 
@@ -32,6 +34,36 @@ describe("realtime frames", () => {
         text: "live",
         command: "git commit",
         createdAt: "2026-10-01T09:00:00.000Z",
+        reverted: false,
+        stashed: false,
+      },
+    });
+  });
+
+  test("parses a message.updated event with its new state", () => {
+    const updated = JSON.stringify({
+      ...JSON.parse(frame),
+      type: "message.updated",
+      message: {
+        ...JSON.parse(frame).message,
+        reverted: true,
+        stashed: false,
+      },
+    });
+
+    expect(parseMessageEvent(updated)).toEqual({
+      type: "message.updated",
+      conversationId: "conv-engineering",
+      seq: 4,
+      message: {
+        seq: 4,
+        id: "message-4",
+        author: "grok08",
+        text: "live",
+        command: "git commit",
+        createdAt: "2026-10-01T09:00:00.000Z",
+        reverted: true,
+        stashed: false,
       },
     });
   });

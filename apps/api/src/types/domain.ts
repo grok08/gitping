@@ -2,7 +2,12 @@ export type UserRole = "owner" | "developer";
 
 export type ConversationKind = "channel" | "direct";
 
-export type MessageEventType = "created" | "reverted" | "stashed" | "merged";
+export type MessageEventType =
+  | "created"
+  | "reverted"
+  | "stashed"
+  | "unstashed"
+  | "merged";
 
 export type User = {
   id: string;

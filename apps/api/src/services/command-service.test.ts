@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { CommandRequestRepository } from "../repositories/command-request-repository";
 import { createCommandRequestRepository } from "../repositories/command-request-repository";
+import { createMessageRepository } from "../repositories/message-repository";
 import { createTestCommandService, sentMessage } from "../test-helpers";
 import type { CommandRequestRecord } from "../types/domain";
 
@@ -596,5 +597,219 @@ describe("idempotent commands", () => {
       .get() as { head_message_id: string };
 
     expect(branch.head_message_id).toBe(winnerMessage.id);
+  });
+});
+
+describe("revert", () => {
+  test("creates a revert message on the current branch and flags the target", () => {
+    const { db, messages, events, commands } = createTestCommandService();
+    const target = sentMessage(
+      commands.send('git commit -m "ship the bug"', "rahul", {
+        conversationId: "conv-engineering",
+      }),
+    );
+
+    const result = commands.send(
+      `git revert ${target.id.slice(0, 8)}`,
+      "grok08",
+      { conversationId: "conv-engineering" },
+    );
+
+    const revert = sentMessage(result);
+
+    expect(revert).toMatchObject({
+      author: "grok08",
+      text: 'Revert "ship the bug"',
+      command: "git revert",
+      reverted: false,
+    });
+
+    const stored = messages.findById(target.id);
+
+    expect(stored?.reverted).toBe(true);
+    expect(stored?.stashed).toBe(false);
+
+    const payload = db
+      .query(
+        `SELECT payload FROM message_events
+         WHERE message_id = $id AND type = 'reverted'`,
+      )
+      .get({ $id: target.id }) as { payload: string };
+
+    expect(JSON.parse(payload.payload)).toEqual({ byMessageId: revert.id });
+
+    const head = db
+      .query(
+        "SELECT head_message_id FROM branches WHERE id = 'branch-conv-engineering-main'",
+      )
+      .get() as { head_message_id: string };
+
+    expect(head.head_message_id).toBe(revert.id);
+
+    // The revert message is announced as a new row, and the target is pushed
+    // again with its new state, both after the transaction committed.
+    expect(events.events.map((event) => event.type)).toEqual([
+      "message.created",
+      "message.created",
+      "message.updated",
+    ]);
+    expect(events.events[2]).toMatchObject({
+      conversationId: "conv-engineering",
+      seq: target.seq,
+      message: { id: target.id, reverted: true, stashed: false },
+    });
+  });
+
+  test("resolves a full id and a unique prefix of at least four characters", () => {
+    const { commands } = createTestCommandService();
+    const target = sentMessage(
+      commands.send('git commit -m "prefix me"', "rahul"),
+    );
+
+    expect(
+      commands.send(`git revert ${target.id}`, "grok08", {
+        conversationId: "conv-engineering",
+      }).ok,
+    ).toBe(true);
+
+    const second = sentMessage(
+      commands.send('git commit -m "short prefix"', "rahul"),
+    );
+
+    expect(
+      commands.send(`git revert ${second.id.slice(0, 4)}`, "grok08", {
+        conversationId: "conv-engineering",
+      }).ok,
+    ).toBe(true);
+  });
+
+  test("rejects an unknown target, a short target, and an ambiguous prefix", () => {
+    const { db, commands } = createTestCommandService();
+    const messages = createMessageRepository(db);
+    const insert = (id: string) =>
+      messages.insert({
+        id,
+        conversationId: "conv-engineering",
+        branchId: "branch-conv-engineering-main",
+        authorId: "user-grok08",
+        text: `note ${id}`,
+        verb: "commit",
+        raw: `git commit -m "note ${id}"`,
+        args: JSON.stringify({ type: "commit", message: id, amend: false }),
+        createdAt: new Date().toISOString(),
+      });
+
+    insert("abcd1111-0000-0000-0000-000000000000");
+    insert("abcd2222-0000-0000-0000-000000000000");
+
+    expect(
+      commands.send("git revert ffff", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "invalid_argument",
+      error: "Unknown message: ffff",
+    });
+
+    expect(
+      commands.send("git revert abc", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "invalid_argument",
+      error: "Unknown message: abc",
+    });
+
+    expect(
+      commands.send("git revert abcd", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "invalid_argument",
+      error: "Ambiguous message prefix: abcd",
+    });
+  });
+
+  test("rejects a second revert of the same message with a conflict", () => {
+    const { db, commands } = createTestCommandService();
+    const target = sentMessage(
+      commands.send('git commit -m "revert once"', "rahul"),
+    );
+    const prefix = target.id.slice(0, 8);
+
+    commands.send(`git revert ${prefix}`, "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    expect(
+      commands.send(`git revert ${prefix}`, "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "conflict",
+      error: `Message ${prefix} is already reverted`,
+    });
+
+    const rows = db
+      .query(
+        `SELECT COUNT(*) AS total FROM message_events WHERE type = 'reverted'`,
+      )
+      .get() as { total: number };
+
+    expect(rows.total).toBe(1);
+  });
+
+  test("allows reverting a revert, as Git does", () => {
+    const { db, messages, commands } = createTestCommandService();
+    const target = sentMessage(
+      commands.send('git commit -m "original"', "rahul"),
+    );
+
+    const first = sentMessage(
+      commands.send(`git revert ${target.id.slice(0, 8)}`, "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+
+    const second = sentMessage(
+      commands.send(`git revert ${first.id.slice(0, 8)}`, "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+
+    expect(second.text).toBe('Revert "Revert "original""');
+    expect(messages.findById(first.id)?.reverted).toBe(true);
+    expect(messages.findById(target.id)?.reverted).toBe(true);
+
+    const count = db
+      .query(
+        `SELECT COUNT(*) AS total FROM message_events WHERE type = 'reverted'`,
+      )
+      .get() as { total: number };
+
+    expect(count.total).toBe(2);
+  });
+
+  test("leaves the history in place, with the reverted row readable", () => {
+    const { messages, commands } = createTestCommandService();
+    const target = sentMessage(
+      commands.send('git commit -m "stays in history"', "rahul"),
+    );
+
+    commands.send(`git revert ${target.id.slice(0, 8)}`, "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    const listed = messages.list("conv-engineering");
+
+    expect(listed.map((message) => message.text)).toEqual([
+      "stays in history",
+      'Revert "stays in history"',
+    ]);
+    expect(listed[0]?.reverted).toBe(true);
   });
 });

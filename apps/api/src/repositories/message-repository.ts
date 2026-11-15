@@ -1,7 +1,34 @@
 import type { Database } from "bun:sqlite";
-import type { NewMessage } from "../types/domain";
+import type { MessageEventType, NewMessage } from "../types/domain";
 import type { MessageRow } from "../types/http";
 
+/**
+ * SQLite has no boolean type, so the derived flags arrive as 0 or 1.
+ */
+type RawMessageRow = Omit<MessageRow, "reverted" | "stashed"> & {
+  reverted: number;
+  stashed: number;
+};
+
+function toMessageRow(row: RawMessageRow): MessageRow {
+  return {
+    seq: row.seq,
+    id: row.id,
+    author: row.author,
+    text: row.text,
+    command: row.command,
+    created_at: row.created_at,
+    reverted: row.reverted === 1,
+    stashed: row.stashed === 1,
+  };
+}
+
+/**
+ * Message state is derived from the event set, never from a mutable column, so
+ * a flag cannot drift from the events that produced it. Both expressions are
+ * pure functions of the set, which makes the answer independent of the order
+ * the events were written in.
+ */
 const selectMessage = `
   SELECT
     m.seq,
@@ -9,7 +36,18 @@ const selectMessage = `
     u.handle AS author,
     m.text,
     'git ' || c.verb AS command,
-    m.created_at
+    m.created_at,
+    EXISTS (
+      SELECT 1 FROM message_events e
+      WHERE e.message_id = m.id AND e.type = 'reverted'
+    ) AS reverted,
+    EXISTS (
+      SELECT 1 FROM message_events e
+      WHERE e.message_id = m.id AND e.type = 'stashed'
+    ) AND NOT EXISTS (
+      SELECT 1 FROM message_events e
+      WHERE e.message_id = m.id AND e.type = 'unstashed'
+    ) AS stashed
   FROM messages m
   JOIN users u ON u.id = m.author_id
   JOIN git_commands c ON c.message_id = m.id
@@ -17,19 +55,82 @@ const selectMessage = `
 
 export function createMessageRepository(db: Database) {
   function list(conversationId?: string): MessageRow[] {
-    return db
+    const rows = db
       .query(`
         ${selectMessage}
         WHERE $conversationId IS NULL OR m.conversation_id = $conversationId
         ORDER BY m.seq ASC
       `)
-      .all({ $conversationId: conversationId ?? null }) as MessageRow[];
+      .all({ $conversationId: conversationId ?? null }) as RawMessageRow[];
+
+    return rows.map(toMessageRow);
   }
 
   function findById(id: string): MessageRow | null {
-    return db
+    const row = db
       .query(`${selectMessage} WHERE m.id = $id`)
-      .get({ $id: id }) as MessageRow | null;
+      .get({ $id: id }) as RawMessageRow | null;
+
+    return row ? toMessageRow(row) : null;
+  }
+
+  /**
+   * A message is addressed by its full id or by a prefix of it, resolved
+   * inside one conversation so two conversations that share an id prefix
+   * cannot collide.
+   */
+  function findByPrefix(conversationId: string, prefix: string): MessageRow[] {
+    const rows = db
+      .query(`
+        ${selectMessage}
+        WHERE m.conversation_id = $conversationId
+          AND substr(m.id, 1, length($prefix)) = $prefix
+        ORDER BY m.seq ASC
+      `)
+      .all({
+        $conversationId: conversationId,
+        $prefix: prefix,
+      }) as RawMessageRow[];
+
+    return rows.map(toMessageRow);
+  }
+
+  function addEvent(event: {
+    messageId: string;
+    type: MessageEventType;
+    payload: unknown;
+    createdAt: string;
+  }): void {
+    db.query(`
+      INSERT INTO message_events (
+        id,
+        message_id,
+        type,
+        payload,
+        created_at
+      )
+      VALUES ($id, $messageId, $type, $payload, $createdAt)
+    `).run({
+      $id: crypto.randomUUID(),
+      $messageId: event.messageId,
+      $type: event.type,
+      $payload: event.payload === null ? null : JSON.stringify(event.payload),
+      $createdAt: event.createdAt,
+    });
+  }
+
+  function hasEvent(messageId: string, type: MessageEventType): boolean {
+    const row = db
+      .query(
+        `SELECT 1 AS present FROM message_events
+         WHERE message_id = $messageId AND type = $type
+         LIMIT 1`,
+      )
+      .get({ $messageId: messageId, $type: type }) as {
+      present: number;
+    } | null;
+
+    return row !== null;
   }
 
   function insert(message: NewMessage): MessageRow {
@@ -85,19 +186,11 @@ export function createMessageRepository(db: Database) {
       $parsedAt: message.createdAt,
     });
 
-    db.query(`
-      INSERT INTO message_events (
-        id,
-        message_id,
-        type,
-        payload,
-        created_at
-      )
-      VALUES ($id, $messageId, 'created', NULL, $createdAt)
-    `).run({
-      $id: crypto.randomUUID(),
-      $messageId: message.id,
-      $createdAt: message.createdAt,
+    addEvent({
+      messageId: message.id,
+      type: "created",
+      payload: null,
+      createdAt: message.createdAt,
     });
 
     const record = findById(message.id);
@@ -109,7 +202,7 @@ export function createMessageRepository(db: Database) {
     return record;
   }
 
-  return { list, findById, insert };
+  return { list, findById, findByPrefix, addEvent, hasEvent, insert };
 }
 
 export type MessageRepository = ReturnType<typeof createMessageRepository>;

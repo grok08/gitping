@@ -14,7 +14,19 @@ export type MessageCreatedEvent = {
   message: MessageRecord;
 };
 
-export type RealtimeEvent = MessageCreatedEvent;
+/**
+ * A committed message whose derived state changed in place, such as a revert
+ * or a stash. The client merges it by id, so the row is replaced rather than
+ * duplicated, and `seq` keeps its place in commit order.
+ */
+export type MessageUpdatedEvent = {
+  type: "message.updated";
+  conversationId: string;
+  seq: number;
+  message: MessageRecord;
+};
+
+export type RealtimeEvent = MessageCreatedEvent | MessageUpdatedEvent;
 
 export type RealtimePublisher = {
   publish: (event: RealtimeEvent) => void;

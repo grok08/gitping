@@ -58,11 +58,27 @@ function toRecord(row: MessageRow): MessageRecord {
     text: row.text,
     command: row.command,
     createdAt: row.created_at,
+    reverted: row.reverted,
+    stashed: row.stashed,
   };
 }
 
+type ContentWrite = {
+  conversation: Conversation;
+  branch: Branch;
+  author: string;
+  input: string;
+  text: string;
+  verb: string;
+  args: unknown;
+  requestId: string | undefined;
+  /** Runs inside the same transaction, after the message and its command. */
+  afterWrite?: (message: MessageRow) => void;
+};
+
 const defaultConversation = "engineering";
 const defaultBranch = "main";
+const minTargetLength = 4;
 const requestConflictError = "Request id already used for another command";
 const unsupportedCommand =
   "Unsupported command. Use git commit, git revert, git merge, git branch, git switch, or git stash.";
@@ -197,35 +213,34 @@ export function createCommandService({
     };
   }
 
-  function commit(
-    conversation: Conversation,
-    branch: Branch,
-    author: string,
-    input: string,
-    parsed: { message: string },
-    requestId: string | undefined,
-  ): SendCommandResult {
-    const write = db.transaction((): MessageRow => {
-      const user = users.ensure(author);
+  /**
+   * One transaction for every content command: the message, its Git command,
+   * its `created` event, any state event the command adds, the branch head, and
+   * the request id. A rolled-back command leaves none of those behind.
+   */
+  function persistContent(write: ContentWrite): SendCommandResult {
+    const transaction = db.transaction((): MessageRow => {
+      const user = users.ensure(write.author);
 
       const message = messages.insert({
         id: crypto.randomUUID(),
-        conversationId: conversation.id,
-        branchId: branch.id,
+        conversationId: write.conversation.id,
+        branchId: write.branch.id,
         authorId: user.id,
-        text: parsed.message,
-        verb: "commit",
-        raw: input,
-        args: JSON.stringify(parsed),
+        text: write.text,
+        verb: write.verb,
+        raw: write.input,
+        args: JSON.stringify(write.args),
         createdAt: new Date().toISOString(),
       });
 
-      branches.setHead(branch.id, message.id);
+      write.afterWrite?.(message);
+      branches.setHead(write.branch.id, message.id);
 
-      if (requestId) {
+      if (write.requestId) {
         requests.insert({
-          id: requestId,
-          conversationId: conversation.id,
+          id: write.requestId,
+          conversationId: write.conversation.id,
           messageId: message.id,
           authorId: user.id,
           createdAt: message.created_at,
@@ -238,15 +253,15 @@ export function createCommandService({
     let row: MessageRow;
 
     try {
-      row = write();
+      row = transaction();
     } catch (error) {
       // Two identical requests can both pass the replay lookup and then
       // serialise on the write. The loser's transaction is rolled back whole
       // (message, command, event, branch head), so the winner's message is the
       // one and only answer.
       const replay =
-        requestId && isDuplicateRequestRow(error)
-          ? findReplay(requestId, author, conversation.id)
+        write.requestId && isDuplicateRequestRow(error)
+          ? findReplay(write.requestId, write.author, write.conversation.id)
           : null;
 
       if (!replay) {
@@ -263,12 +278,135 @@ export function createCommandService({
     // returns early above and publishes nothing, so one retry is one event.
     events.publish({
       type: "message.created",
-      conversationId: conversation.id,
+      conversationId: write.conversation.id,
       seq: message.seq,
       message,
     });
 
     return { ok: true, kind: "message", message, replayed: false };
+  }
+
+  /**
+   * Re-reads a message whose derived state just changed and pushes it to the
+   * conversation. Called after the state transaction commits, once per
+   * affected message.
+   */
+  function publishUpdate(conversationId: string, messageId: string): void {
+    const updated = messages.findById(messageId);
+
+    if (!updated) {
+      return;
+    }
+
+    const message = toRecord(updated);
+
+    events.publish({
+      type: "message.updated",
+      conversationId,
+      seq: message.seq,
+      message,
+    });
+  }
+
+  function revert(
+    conversation: Conversation,
+    branch: Branch,
+    author: string,
+    input: string,
+    target: string,
+    requestId: string | undefined,
+  ): SendCommandResult {
+    const resolved = resolveTarget(conversation.id, target);
+
+    if (!resolved.ok) {
+      return reject("invalid_argument", resolved.error);
+    }
+
+    const reverted = resolved.message;
+
+    if (messages.hasEvent(reverted.id, "reverted")) {
+      return reject(
+        "conflict",
+        `Message ${target} is already reverted`,
+      );
+    }
+
+    const result = persistContent({
+      conversation,
+      branch,
+      author,
+      input,
+      text: `Revert "${reverted.text}"`,
+      verb: "revert",
+      args: { type: "revert", target },
+      requestId,
+      afterWrite(message) {
+        messages.addEvent({
+          messageId: reverted.id,
+          type: "reverted",
+          payload: { byMessageId: message.id },
+          createdAt: message.created_at,
+        });
+      },
+    });
+
+    if (result.ok && result.kind === "message" && !result.replayed) {
+      publishUpdate(conversation.id, reverted.id);
+    }
+
+    return result;
+  }
+
+  /**
+   * A target is a full message id or a prefix of one. The prefix has to be at
+   * least four characters so a short string cannot stand for a message by
+   * accident, and it is resolved inside the conversation it was sent to.
+   */
+  function resolveTarget(
+    conversationId: string,
+    target: string,
+  ): { ok: true; message: MessageRow } | { ok: false; error: string } {
+    if (target.length < minTargetLength) {
+      return { ok: false, error: `Unknown message: ${target}` };
+    }
+
+    const matches = messages.findByPrefix(conversationId, target);
+
+    if (matches.length === 0) {
+      return { ok: false, error: `Unknown message: ${target}` };
+    }
+
+    const [only] = matches;
+
+    if (matches.length > 1 || !only) {
+      return { ok: false, error: `Ambiguous message prefix: ${target}` };
+    }
+
+    return { ok: true, message: only };
+  }
+
+  /**
+   * The branch a content command writes to, or the failure to answer with.
+   */
+  function contentBranch(
+    conversation: Conversation,
+    user: User | null,
+    requestedName: string | undefined,
+  ): { ok: true; branch: Branch } | { ok: false; result: SendCommandResult } {
+    const lookup = branchFor(conversation.id, user, requestedName);
+
+    if (!lookup.ok) {
+      return { ok: false, result: reject("unknown_branch", lookup.error) };
+    }
+
+    if (!lookup.branch) {
+      return {
+        ok: false,
+        result: reject("unknown_branch", `Unknown branch: ${defaultBranch}`),
+      };
+    }
+
+    return { ok: true, branch: lookup.branch };
   }
 
   function listBranches(
@@ -429,22 +567,37 @@ export function createCommandService({
 
       switch (parsed.type) {
         case "commit": {
-          const lookup = branchFor(conversation.id, user, options.branch);
+          const resolved = contentBranch(conversation, user, options.branch);
 
-          if (!lookup.ok) {
-            return reject("unknown_branch", lookup.error);
+          if (!resolved.ok) {
+            return resolved.result;
           }
 
-          if (!lookup.branch) {
-            return reject("unknown_branch", `Unknown branch: ${defaultBranch}`);
-          }
-
-          return commit(
+          return persistContent({
             conversation,
-            lookup.branch,
+            branch: resolved.branch,
             author,
             input,
-            parsed,
+            text: parsed.message,
+            verb: "commit",
+            args: parsed,
+            requestId,
+          });
+        }
+
+        case "revert": {
+          const resolved = contentBranch(conversation, user, options.branch);
+
+          if (!resolved.ok) {
+            return resolved.result;
+          }
+
+          return revert(
+            conversation,
+            resolved.branch,
+            author,
+            input,
+            parsed.target,
             requestId,
           );
         }

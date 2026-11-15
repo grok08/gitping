@@ -9,6 +9,8 @@ type MockMessage = {
   text: string;
   command: string;
   created_at: string;
+  reverted: boolean;
+  stashed: boolean;
 };
 
 type MockConversation = {
@@ -55,6 +57,8 @@ function createState(): MockState {
     text: "Ready to ship?",
     command: "git commit",
     created_at: "2026-10-03T08:42:00.000Z",
+    reverted: false,
+    stashed: false,
   };
 
   return {
@@ -312,6 +316,8 @@ export async function openApp(
         text,
         command: "git commit",
         created_at: "2026-10-03T08:43:00.000Z",
+        reverted: false,
+        stashed: false,
       };
 
       submittedCommands.push(input);

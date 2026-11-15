@@ -173,6 +173,8 @@ describe("migrations", () => {
         text: "first legacy message",
         command: "git commit",
         created_at: "2026-01-01T10:00:00.000Z",
+        reverted: false,
+        stashed: false,
       },
       {
         seq: 2,
@@ -181,6 +183,8 @@ describe("migrations", () => {
         text: "second legacy message",
         command: "git commit",
         created_at: "2026-01-02T10:00:00.000Z",
+        reverted: false,
+        stashed: false,
       },
     ]);
 

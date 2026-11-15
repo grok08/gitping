@@ -671,6 +671,113 @@ describe("branch command HTTP API", () => {
   });
 });
 
+describe("revert HTTP API", () => {
+  test("creates a revert message and flags the target in history", async () => {
+    const app = createTestApp();
+
+    const commit = (await (
+      await postConversationCommand(
+        app,
+        "conv-engineering",
+        JSON.stringify({ input: 'git commit -m "roll this back"' }),
+      )
+    ).json()) as { message: { id: string; seq: number } };
+
+    const response = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: `git revert ${commit.message.id.slice(0, 8)}` }),
+    );
+
+    expect(response.status).toBe(201);
+
+    const body = (await response.json()) as {
+      message: {
+        text: string;
+        command: string;
+        reverted: boolean;
+        stashed: boolean;
+      };
+    };
+
+    expect(body.message).toMatchObject({
+      text: 'Revert "roll this back"',
+      command: "git revert",
+      reverted: false,
+      stashed: false,
+    });
+
+    const listed = (await (
+      await app.request("/conversations/conv-engineering/messages")
+    ).json()) as Array<{ id: string; reverted: boolean; stashed: boolean }>;
+
+    expect(listed.map((message) => message.reverted)).toEqual([true, false]);
+    expect(listed[0]?.id).toBe(commit.message.id);
+  });
+
+  test("rejects a second revert with 409 and an unknown target with 400", async () => {
+    const app = createTestApp();
+
+    const commit = (await (
+      await postConversationCommand(
+        app,
+        "conv-engineering",
+        JSON.stringify({ input: 'git commit -m "revert me twice"' }),
+      )
+    ).json()) as { message: { id: string } };
+    const input = `git revert ${commit.message.id.slice(0, 8)}`;
+
+    await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input }),
+    );
+
+    const duplicate = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input }),
+    );
+
+    expect(duplicate.status).toBe(409);
+    expect(await duplicate.json()).toEqual({
+      error: `Message ${commit.message.id.slice(0, 8)} is already reverted`,
+    });
+
+    const unknown = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git revert ffff" }),
+    );
+
+    expect(unknown.status).toBe(400);
+    expect(await unknown.json()).toEqual({ error: "Unknown message: ffff" });
+  });
+
+  test("does not resolve a prefix from another conversation", async () => {
+    const app = createTestApp();
+
+    const weekend = (await (
+      await postConversationCommand(
+        app,
+        "conv-weekend",
+        JSON.stringify({ input: 'git commit -m "weekend only"' }),
+      )
+    ).json()) as { message: { id: string } };
+
+    const response = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: `git revert ${weekend.message.id.slice(0, 8)}` }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: `Unknown message: ${weekend.message.id.slice(0, 8)}`,
+    });
+  });
+});
+
 describe("realtime upgrade guard", () => {
   test("rejects an upgrade from an origin the HTTP CORS policy also rejects", async () => {
     const response = await createTestApp().request(
