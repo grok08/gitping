@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Database } from "bun:sqlite";
 import { initializeDatabase, openDatabase } from "./db";
 import { schemaVersion } from "./migrations";
+import { createBranchRepository } from "./repositories/branch-repository";
 import { createMessageRepository } from "./repositories/message-repository";
 
 function tableNames(db: Database): string[] {
@@ -20,13 +21,21 @@ function count(db: Database, table: string): number {
   return row.total;
 }
 
+function columnNames(db: Database, table: string): string[] {
+  const columns = db.query(`PRAGMA table_info(${table})`).all() as Array<{
+    name: string;
+  }>;
+
+  return columns.map((column) => column.name);
+}
+
 describe("migrations", () => {
   test("creates the domain schema on a fresh database", () => {
     const db = openDatabase(":memory:");
 
     initializeDatabase(db);
 
-    expect(schemaVersion(db)).toBe(2);
+    expect(schemaVersion(db)).toBe(3);
 
     const tables = tableNames(db);
 
@@ -48,7 +57,7 @@ describe("migrations", () => {
 
     initializeDatabase(db);
 
-    expect(schemaVersion(db)).toBe(2);
+    expect(schemaVersion(db)).toBe(3);
     expect(tableNames(db)).toContain("command_requests");
 
     const columns = db.query("PRAGMA table_info(command_requests)").all() as Array<{
@@ -86,8 +95,9 @@ describe("migrations", () => {
     initializeDatabase(db);
 
     // Rebuild the version 1 state: its schema and seed data, before
-    // `command_requests` existed.
+    // `command_requests` and branch context existed.
     db.run("DROP TABLE command_requests");
+    db.run("ALTER TABLE conversation_members DROP COLUMN current_branch_id");
     db.run("PRAGMA user_version = 1");
 
     expect(schemaVersion(db)).toBe(1);
@@ -95,12 +105,20 @@ describe("migrations", () => {
 
     initializeDatabase(db);
 
-    expect(schemaVersion(db)).toBe(2);
+    expect(schemaVersion(db)).toBe(3);
     expect(tableNames(db)).toContain("command_requests");
     expect(count(db, "users")).toBe(4);
     expect(count(db, "conversations")).toBe(6);
     expect(count(db, "branches")).toBe(8);
     expect(count(db, "command_requests")).toBe(0);
+    expect(
+      db
+        .query(
+          `SELECT COUNT(*) AS total FROM conversation_members
+           WHERE current_branch_id IS NULL`,
+        )
+        .get() as { total: number },
+    ).toEqual({ total: 0 });
   });
 
   test("backfills a legacy messages table into the domain model", () => {
@@ -142,7 +160,7 @@ describe("migrations", () => {
 
     initializeDatabase(db);
 
-    expect(schemaVersion(db)).toBe(2);
+    expect(schemaVersion(db)).toBe(3);
     expect(tableNames(db)).not.toContain("messages_legacy");
 
     const messages = createMessageRepository(db).list();
@@ -198,6 +216,86 @@ describe("migrations", () => {
     initializeDatabase(db);
 
     expect(count(db, "conversations")).toBe(conversationsAfterFirst);
-    expect(schemaVersion(db)).toBe(2);
+    expect(schemaVersion(db)).toBe(3);
+  });
+
+  test("version 3 adds branch context, backfilled to main", () => {
+    const db = openDatabase(":memory:");
+
+    initializeDatabase(db);
+
+    // A version 2 database is the seeded schema before migration 3 ran.
+    db.run("ALTER TABLE conversation_members DROP COLUMN current_branch_id");
+    db.run("PRAGMA user_version = 2");
+
+    expect(columnNames(db, "conversation_members")).not.toContain(
+      "current_branch_id",
+    );
+
+    initializeDatabase(db);
+
+    expect(schemaVersion(db)).toBe(3);
+    expect(
+      columnNames(db, "conversation_members").filter(
+        (column) => column === "current_branch_id",
+      ),
+    ).toHaveLength(1);
+
+    const members = db
+      .query(`
+        SELECT m.conversation_id, m.current_branch_id, b.name AS branch
+        FROM conversation_members m
+        JOIN branches b ON b.id = m.current_branch_id
+        ORDER BY m.conversation_id
+      `)
+      .all() as Array<{
+      conversation_id: string;
+      current_branch_id: string;
+      branch: string;
+    }>;
+
+    expect(members).toHaveLength(count(db, "conversation_members"));
+    expect(members.every((member) => member.branch === "main")).toBe(true);
+    expect(
+      members.every(
+        (member) =>
+          member.current_branch_id === `branch-${member.conversation_id}-main`,
+      ),
+    ).toBe(true);
+
+    const foreignKeys = db
+      .query("PRAGMA foreign_key_list(conversation_members)")
+      .all() as Array<{ table: string; from: string }>;
+
+    expect(foreignKeys).toContainEqual(
+      expect.objectContaining({ table: "branches", from: "current_branch_id" }),
+    );
+
+    expect(count(db, "users")).toBe(4);
+    expect(count(db, "conversations")).toBe(6);
+    expect(count(db, "branches")).toBe(8);
+  });
+
+  test("a fresh database's members resolve to main through the null fallback", () => {
+    const db = openDatabase(":memory:");
+
+    initializeDatabase(db);
+
+    const members = db
+      .query(
+        `SELECT current_branch_id FROM conversation_members
+         WHERE user_id = 'user-grok08'`,
+      )
+      .all() as Array<{ current_branch_id: string | null }>;
+
+    expect(members.every((member) => member.current_branch_id === null)).toBe(
+      true,
+    );
+    expect(
+      createBranchRepository(db).currentFor("conv-engineering", "user-grok08"),
+    ).toMatchObject({
+      id: "branch-conv-engineering-main",
+      name: "main",
+    });
   });
 });

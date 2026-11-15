@@ -3,6 +3,7 @@ import type { Database } from "bun:sqlite";
 import {
   createTestCommandService,
   createTestConversationService,
+  sentMessage,
 } from "../test-helpers";
 
 function countRows(
@@ -329,7 +330,7 @@ describe("conversation service", () => {
     const { db, conversations } = createTestConversationService();
     const { commands } = createTestCommandService(db);
 
-    const before = conversations.branches("conv-engineering");
+    const before = conversations.branches("conv-engineering", "grok08");
 
     expect(before).toEqual({
       ok: true,
@@ -338,30 +339,31 @@ describe("conversation service", () => {
           id: "branch-conv-engineering-main",
           name: "main",
           headMessageId: null,
+          current: true,
         },
         {
           id: "branch-conv-engineering-weekend",
           name: "weekend",
           headMessageId: null,
+          current: false,
         },
         {
           id: "branch-conv-engineering-feature-ui",
           name: "feature-ui",
           headMessageId: null,
+          current: false,
         },
       ],
     });
 
-    const sent = commands.send('git commit -m "head moves"', "grok08", {
-      conversationId: "conv-engineering",
-      branch: "main",
-    });
+    const message = sentMessage(
+      commands.send('git commit -m "head moves"', "grok08", {
+        conversationId: "conv-engineering",
+        branch: "main",
+      }),
+    );
 
-    if (!sent.ok) {
-      throw new Error("expected the command to succeed");
-    }
-
-    const after = conversations.branches("conv-engineering");
+    const after = conversations.branches("conv-engineering", "grok08");
 
     expect(after.ok).toBe(true);
 
@@ -373,13 +375,33 @@ describe("conversation service", () => {
     expect(after.value.find((branch) => branch.name === "main")).toEqual({
       id: "branch-conv-engineering-main",
       name: "main",
-      headMessageId: sent.message.id,
+      headMessageId: message.id,
+      current: true,
     });
 
-    expect(conversations.branches("conv-missing")).toEqual({
+    expect(conversations.branches("conv-missing", "grok08")).toEqual({
       ok: false,
       reason: "not_found",
       error: "Unknown conversation: conv-missing",
     });
+  });
+
+  test("marks the persisted current branch for the viewer, not for everyone", () => {
+    const { db, conversations } = createTestConversationService();
+    const { commands } = createTestCommandService(db);
+
+    commands.send("git switch weekend", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    const grok = conversations.branches("conv-engineering", "grok08");
+    const rahul = conversations.branches("conv-engineering", "rahul");
+
+    if (!grok.ok || !rahul.ok) {
+      throw new Error("expected branch lists");
+    }
+
+    expect(grok.value.find((branch) => branch.current)?.name).toBe("weekend");
+    expect(rahul.value.find((branch) => branch.current)?.name).toBe("main");
   });
 });

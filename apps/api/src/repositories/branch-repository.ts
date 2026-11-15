@@ -28,35 +28,103 @@ function toBranch(row: BranchRow): Branch {
   };
 }
 
-function toBranchSummary(row: BranchSummaryRow): BranchSummary {
+function toBranchSummary(
+  row: BranchSummaryRow,
+  currentBranchId: string | null,
+): BranchSummary {
   return {
     id: row.id,
     name: row.name,
     headMessageId: row.head_message_id,
+    current: row.id === currentBranchId,
   };
 }
+
+const selectBranch = `
+  SELECT
+    id,
+    conversation_id,
+    name,
+    head_message_id,
+    created_from_branch_id,
+    created_at
+  FROM branches
+`;
+
+/**
+ * A member is always on exactly one branch of the conversation. The column can
+ * be NULL for a member created before migration 3, so the read resolves that to
+ * the conversation's `main` branch instead of forcing every caller to guess.
+ */
+const currentBranch = `
+  SELECT
+    b.id,
+    b.conversation_id,
+    b.name,
+    b.head_message_id,
+    b.created_from_branch_id,
+    b.created_at
+  FROM branches b
+  WHERE b.id = COALESCE(
+    (
+      SELECT member.current_branch_id
+      FROM conversation_members member
+      WHERE member.conversation_id = $conversationId
+        AND member.user_id = $userId
+    ),
+    (
+      SELECT main.id
+      FROM branches main
+      WHERE main.conversation_id = $conversationId
+        AND main.name = 'main'
+    )
+  )
+`;
 
 export function createBranchRepository(db: Database) {
   return {
     find(conversationId: string, name: string): Branch | null {
       const row = db
-        .query(`
-          SELECT
-            id,
-            conversation_id,
-            name,
-            head_message_id,
-            created_from_branch_id,
-            created_at
-          FROM branches
-          WHERE conversation_id = $conversationId AND name = $name
-        `)
+        .query(`${selectBranch} WHERE conversation_id = $conversationId AND name = $name`)
         .get({ $conversationId: conversationId, $name: name }) as BranchRow | null;
 
       return row ? toBranch(row) : null;
     },
 
-    list(conversationId: string): BranchSummary[] {
+    findById(id: string): Branch | null {
+      const row = db
+        .query(`${selectBranch} WHERE id = $id`)
+        .get({ $id: id }) as BranchRow | null;
+
+      return row ? toBranch(row) : null;
+    },
+
+    currentFor(conversationId: string, userId: string): Branch | null {
+      const row = db
+        .query(currentBranch)
+        .get({ $conversationId: conversationId, $userId: userId }) as
+        | BranchRow
+        | null;
+
+      return row ? toBranch(row) : null;
+    },
+
+    setCurrent(conversationId: string, userId: string, branchId: string): void {
+      db.query(`
+        UPDATE conversation_members
+        SET current_branch_id = $branchId
+        WHERE conversation_id = $conversationId AND user_id = $userId
+      `).run({
+        $conversationId: conversationId,
+        $userId: userId,
+        $branchId: branchId,
+      });
+    },
+
+    list(
+      conversationId: string,
+      currentBranchId: string | null,
+    ): BranchSummary[] {
       const rows = db
         .query(`
           SELECT id, name, head_message_id
@@ -69,7 +137,7 @@ export function createBranchRepository(db: Database) {
         `)
         .all({ $conversationId: conversationId }) as BranchSummaryRow[];
 
-      return rows.map(toBranchSummary);
+      return rows.map((row) => toBranchSummary(row, currentBranchId));
     },
 
     create(branch: NewBranch): void {

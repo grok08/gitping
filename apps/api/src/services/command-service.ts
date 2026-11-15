@@ -6,8 +6,13 @@ import type { ConversationRepository } from "../repositories/conversation-reposi
 import type { MessageRepository } from "../repositories/message-repository";
 import type { UserRepository } from "../repositories/user-repository";
 import type { RealtimePublisher } from "../realtime/events";
-import type { Conversation } from "../types/domain";
-import type { MessageRecord, MessageRow } from "../types/http";
+import type { Branch, Conversation, User } from "../types/domain";
+import type {
+  BranchSummary,
+  MessageRecord,
+  MessageRow,
+  StashRecord,
+} from "../types/http";
 
 export type SendCommandOptions = {
   conversation?: string;
@@ -18,12 +23,21 @@ export type SendCommandOptions = {
 
 export type CommandFailureReason =
   | "invalid_command"
+  | "invalid_argument"
   | "unknown_conversation"
   | "unknown_branch"
+  | "conflict"
   | "request_conflict";
 
+/**
+ * A command answers with exactly one of three bodies, or a failure. The union
+ * is untagged on the wire: a client checks `message`, then `branches`, then
+ * `stashes`.
+ */
 export type SendCommandResult =
-  | { ok: true; message: MessageRecord; replayed: boolean }
+  | { ok: true; kind: "message"; message: MessageRecord; replayed: boolean }
+  | { ok: true; kind: "branches"; branches: BranchSummary[] }
+  | { ok: true; kind: "stashes"; stashes: StashRecord[] }
   | { ok: false; reason: CommandFailureReason; error: string };
 
 export type CommandServiceDependencies = {
@@ -50,6 +64,18 @@ function toRecord(row: MessageRow): MessageRecord {
 const defaultConversation = "engineering";
 const defaultBranch = "main";
 const requestConflictError = "Request id already used for another command";
+const unsupportedCommand =
+  "Unsupported command. Use git commit, git revert, git merge, git branch, git switch, or git stash.";
+
+/**
+ * Branch names follow Git's rule for a short, safe name. `HEAD` is refused
+ * because it names a pointer, not a branch.
+ */
+const branchNamePattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/;
+
+function isBranchName(name: string): boolean {
+  return name !== "HEAD" && branchNamePattern.test(name);
+}
 
 function reject(
   reason: CommandFailureReason,
@@ -87,6 +113,47 @@ export function createCommandService({
   events,
 }: CommandServiceDependencies) {
   /**
+   * The branch a command acts on. An explicit branch from the request wins,
+   * because that is the branch the caller's selector shows; otherwise the
+   * member's persisted branch, which is what a reload restores. An explicit
+   * branch that does not exist is an error rather than a silent fallback.
+   */
+  function branchFor(
+    conversationId: string,
+    user: User | null,
+    requestedName: string | undefined,
+  ): { ok: true; branch: Branch | null } | { ok: false; error: string } {
+    if (requestedName) {
+      const branch = branches.find(conversationId, requestedName);
+
+      return branch
+        ? { ok: true, branch }
+        : { ok: false, error: `Unknown branch: ${requestedName}` };
+    }
+
+    return {
+      ok: true,
+      // A member row can be absent (an author who is not a member) or the
+      // column can be NULL, so `main` is the last resort, exactly as Git treats
+      // a repository's initial branch.
+      branch:
+        (user ? branches.currentFor(conversationId, user.id) : null) ??
+        branches.find(conversationId, defaultBranch),
+    };
+  }
+
+  function branchesResult(
+    conversationId: string,
+    currentBranchId: string | null,
+  ): SendCommandResult {
+    return {
+      ok: true,
+      kind: "branches",
+      branches: branches.list(conversationId, currentBranchId),
+    };
+  }
+
+  /**
    * The replay answer for an id that already names a command. It runs before
    * the command is parsed because a retry does not need to be valid again: the
    * stored message is the answer. The author is read here rather than created,
@@ -122,7 +189,195 @@ export function createCommandService({
       return null;
     }
 
-    return { ok: true, message: toRecord(stored), replayed: true };
+    return {
+      ok: true,
+      kind: "message",
+      message: toRecord(stored),
+      replayed: true,
+    };
+  }
+
+  function commit(
+    conversation: Conversation,
+    branch: Branch,
+    author: string,
+    input: string,
+    parsed: { message: string },
+    requestId: string | undefined,
+  ): SendCommandResult {
+    const write = db.transaction((): MessageRow => {
+      const user = users.ensure(author);
+
+      const message = messages.insert({
+        id: crypto.randomUUID(),
+        conversationId: conversation.id,
+        branchId: branch.id,
+        authorId: user.id,
+        text: parsed.message,
+        verb: "commit",
+        raw: input,
+        args: JSON.stringify(parsed),
+        createdAt: new Date().toISOString(),
+      });
+
+      branches.setHead(branch.id, message.id);
+
+      if (requestId) {
+        requests.insert({
+          id: requestId,
+          conversationId: conversation.id,
+          messageId: message.id,
+          authorId: user.id,
+          createdAt: message.created_at,
+        });
+      }
+
+      return message;
+    });
+
+    let row: MessageRow;
+
+    try {
+      row = write();
+    } catch (error) {
+      // Two identical requests can both pass the replay lookup and then
+      // serialise on the write. The loser's transaction is rolled back whole
+      // (message, command, event, branch head), so the winner's message is the
+      // one and only answer.
+      const replay =
+        requestId && isDuplicateRequestRow(error)
+          ? findReplay(requestId, author, conversation.id)
+          : null;
+
+      if (!replay) {
+        throw error;
+      }
+
+      return replay;
+    }
+
+    const message = toRecord(row);
+
+    // The transaction has committed, so the row is durable before any client
+    // is told about it. A rolled-back write never reaches this line. A replay
+    // returns early above and publishes nothing, so one retry is one event.
+    events.publish({
+      type: "message.created",
+      conversationId: conversation.id,
+      seq: message.seq,
+      message,
+    });
+
+    return { ok: true, kind: "message", message, replayed: false };
+  }
+
+  function listBranches(
+    conversation: Conversation,
+    user: User | null,
+    requestedName: string | undefined,
+  ): SendCommandResult {
+    const lookup = branchFor(conversation.id, user, requestedName);
+
+    if (!lookup.ok) {
+      return reject("unknown_branch", lookup.error);
+    }
+
+    return branchesResult(conversation.id, lookup.branch?.id ?? null);
+  }
+
+  function createBranch(
+    conversation: Conversation,
+    user: User | null,
+    name: string,
+    requestedName: string | undefined,
+  ): SendCommandResult {
+    if (!isBranchName(name)) {
+      return reject("invalid_argument", `Invalid branch name: ${name}`);
+    }
+
+    if (branches.find(conversation.id, name)) {
+      return reject("conflict", `Branch already exists: ${name}`);
+    }
+
+    const lookup = branchFor(conversation.id, user, requestedName);
+
+    if (!lookup.ok) {
+      return reject("unknown_branch", lookup.error);
+    }
+
+    const current = lookup.branch;
+
+    branches.create({
+      id: crypto.randomUUID(),
+      conversationId: conversation.id,
+      name,
+      headMessageId: current?.headMessageId ?? null,
+      createdFromBranchId: current?.id ?? null,
+      createdAt: new Date().toISOString(),
+    });
+
+    return branchesResult(conversation.id, current?.id ?? null);
+  }
+
+  function switchBranch(
+    conversation: Conversation,
+    author: string,
+    name: string,
+    create: boolean,
+  ): SendCommandResult {
+    if (create) {
+      return createAndSwitch(conversation, author, name);
+    }
+
+    const target = branches.find(conversation.id, name);
+
+    if (!target) {
+      return reject("unknown_branch", `Unknown branch: ${name}`);
+    }
+
+    const move = db.transaction(() => {
+      const user = users.ensure(author);
+
+      branches.setCurrent(conversation.id, user.id, target.id);
+    });
+
+    move();
+
+    return branchesResult(conversation.id, target.id);
+  }
+
+  function createAndSwitch(
+    conversation: Conversation,
+    author: string,
+    name: string,
+  ): SendCommandResult {
+    if (!isBranchName(name)) {
+      return reject("invalid_argument", `Invalid branch name: ${name}`);
+    }
+
+    if (branches.find(conversation.id, name)) {
+      return reject("conflict", `Branch already exists: ${name}`);
+    }
+
+    const move = db.transaction(() => {
+      const user = users.ensure(author);
+      const from = branches.currentFor(conversation.id, user.id);
+      const branch: Branch = {
+        id: crypto.randomUUID(),
+        conversationId: conversation.id,
+        name,
+        headMessageId: from?.headMessageId ?? null,
+        createdFromBranchId: from?.id ?? null,
+        createdAt: new Date().toISOString(),
+      };
+
+      branches.create(branch);
+      branches.setCurrent(conversation.id, user.id, branch.id);
+
+      return branch;
+    });
+
+    return branchesResult(conversation.id, move().id);
   }
 
   return {
@@ -170,84 +425,51 @@ export function createCommandService({
         return reject("invalid_command", "Unsupported or invalid Git command");
       }
 
-      if (parsed.type !== "commit") {
-        return reject(
-          "invalid_command",
-          'For the first message flow, use: git commit -m "message"',
-        );
-      }
+      const user = users.findByHandle(author);
 
-      const branchName = options.branch ?? defaultBranch;
-      const branch = branches.find(conversation.id, branchName);
+      switch (parsed.type) {
+        case "commit": {
+          const lookup = branchFor(conversation.id, user, options.branch);
 
-      if (!branch) {
-        return reject("unknown_branch", `Unknown branch: ${branchName}`);
-      }
+          if (!lookup.ok) {
+            return reject("unknown_branch", lookup.error);
+          }
 
-      const write = db.transaction((): MessageRow => {
-        const user = users.ensure(author);
+          if (!lookup.branch) {
+            return reject("unknown_branch", `Unknown branch: ${defaultBranch}`);
+          }
 
-        const message = messages.insert({
-          id: crypto.randomUUID(),
-          conversationId: conversation.id,
-          branchId: branch.id,
-          authorId: user.id,
-          text: parsed.message,
-          verb: parsed.type,
-          raw: input,
-          args: JSON.stringify(parsed),
-          createdAt: new Date().toISOString(),
-        });
-
-        branches.setHead(branch.id, message.id);
-
-        if (requestId) {
-          requests.insert({
-            id: requestId,
-            conversationId: conversation.id,
-            messageId: message.id,
-            authorId: user.id,
-            createdAt: message.created_at,
-          });
+          return commit(
+            conversation,
+            lookup.branch,
+            author,
+            input,
+            parsed,
+            requestId,
+          );
         }
 
-        return message;
-      });
+        case "branch": {
+          if (parsed.name === undefined) {
+            return listBranches(conversation, user, options.branch);
+          }
 
-      let row: MessageRow;
-
-      try {
-        row = write();
-      } catch (error) {
-        // Two identical requests can both pass the replay lookup and then
-        // serialise on the write. The loser's transaction is rolled back
-        // whole (message, command, event, branch head), so the winner's
-        // message is the one and only answer.
-        const replay =
-          requestId && isDuplicateRequestRow(error)
-            ? findReplay(requestId, author, conversation.id)
-            : null;
-
-        if (!replay) {
-          throw error;
+          return createBranch(
+            conversation,
+            user,
+            parsed.name,
+            options.branch,
+          );
         }
 
-        return replay;
+        case "switch": {
+          return switchBranch(conversation, author, parsed.name, parsed.create);
+        }
+
+        default: {
+          return reject("invalid_command", unsupportedCommand);
+        }
       }
-
-      const message = toRecord(row);
-
-      // The transaction has committed, so the row is durable before any client
-      // is told about it. A rolled-back write never reaches this line. A replay
-      // returns early above and publishes nothing, so one retry is one event.
-      events.publish({
-        type: "message.created",
-        conversationId: conversation.id,
-        seq: message.seq,
-        message,
-      });
-
-      return { ok: true, message, replayed: false };
     },
   };
 }

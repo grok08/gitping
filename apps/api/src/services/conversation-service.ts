@@ -196,14 +196,25 @@ export function createConversationService({
       return { ok: true, value: conversations.listMembers(conversationId) };
     },
 
-    branches(conversationId: string): ConversationResult<BranchSummary[]> {
+    branches(
+      conversationId: string,
+      viewerHandle: string,
+    ): ConversationResult<BranchSummary[]> {
       const missing = requireConversation(conversationId);
 
       if (missing) {
         return missing;
       }
 
-      return { ok: true, value: branches.list(conversationId) };
+      const viewer = users.findByHandle(viewerHandle);
+      const current = viewer
+        ? branches.currentFor(conversationId, viewer.id)
+        : null;
+
+      return {
+        ok: true,
+        value: branches.list(conversationId, current?.id ?? null),
+      };
     },
   };
 }

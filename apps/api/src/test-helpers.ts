@@ -9,8 +9,10 @@ import { createConversationRepository } from "./repositories/conversation-reposi
 import { createMessageRepository } from "./repositories/message-repository";
 import { createUserRepository } from "./repositories/user-repository";
 import { createCommandService } from "./services/command-service";
+import type { SendCommandResult } from "./services/command-service";
 import { createConversationService } from "./services/conversation-service";
 import { createServer } from "./server";
+import type { MessageRecord } from "./types/http";
 
 export function createTestDatabase(): Database {
   const db = openDatabase(":memory:");
@@ -76,4 +78,20 @@ export function createTestConversationService(
       messages: createMessageRepository(db),
     }),
   };
+}
+
+/**
+ * Narrows a command result to its message body, so a test that expects a
+ * content command stays about the message rather than the whole union.
+ */
+export function sentMessage(result: SendCommandResult): MessageRecord {
+  if (!result.ok) {
+    throw new Error(`expected a message, received ${result.reason}: ${result.error}`);
+  }
+
+  if (result.kind !== "message") {
+    throw new Error(`expected a message, received ${result.kind}`);
+  }
+
+  return result.message;
 }

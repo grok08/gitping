@@ -1,19 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import { createCommandRequestRepository } from "./command-request-repository";
-import { createTestCommandService } from "../test-helpers";
+import { createTestCommandService, sentMessage } from "../test-helpers";
 
 function seedMessage(): {
   db: ReturnType<typeof createTestCommandService>["db"];
   messageId: string;
 } {
   const { db, commands } = createTestCommandService();
-  const result = commands.send('git commit -m "request row"', "grok08");
+  const message = sentMessage(
+    commands.send('git commit -m "request row"', "grok08"),
+  );
 
-  if (!result.ok) {
-    throw new Error("expected the seed command to succeed");
-  }
-
-  return { db, messageId: result.message.id };
+  return { db, messageId: message.id };
 }
 
 describe("command request repository", () => {

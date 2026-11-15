@@ -248,6 +248,21 @@ const commandRequestsSchema = `
   )
 `;
 
+const branchContextMigration = [
+  `
+    ALTER TABLE conversation_members
+      ADD COLUMN current_branch_id TEXT REFERENCES branches(id)
+  `,
+  `
+    UPDATE conversation_members
+    SET current_branch_id = (
+      SELECT b.id FROM branches b
+      WHERE b.conversation_id = conversation_members.conversation_id
+        AND b.name = 'main'
+    )
+  `,
+];
+
 const migrations: Migration[] = [
   {
     version: 1,
@@ -274,6 +289,15 @@ const migrations: Migration[] = [
     name: "idempotent commands",
     run(db) {
       db.run(commandRequestsSchema);
+    },
+  },
+  {
+    version: 3,
+    name: "branch context",
+    run(db) {
+      for (const statement of branchContextMigration) {
+        db.run(statement);
+      }
     },
   },
 ];

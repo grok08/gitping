@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { currentUserHandle } from "../current-user";
 import { checkRequestId, requestIdError } from "./request-id";
+import { sendCommandResponse } from "./command-response";
 import type { CommandService } from "../services/command-service";
 import type { CommandRequest } from "../types/http";
 
@@ -35,17 +36,10 @@ export function createCommandRoutes(commands: CommandService) {
       requestId: requestId.requestId,
     });
 
-    if (!result.ok) {
-      const status = result.reason === "request_conflict" ? 409 : 400;
-
-      return c.json({ error: result.error }, status);
-    }
-
-    if (result.replayed) {
-      c.header("Idempotent-Replay", "true");
-    }
-
-    return c.json({ message: result.message }, 201);
+    // The compatibility route has always answered an unknown conversation as
+    // a rejected input rather than a missing resource, and its clients rely on
+    // that.
+    return sendCommandResponse(c, result, 400);
   });
 
   return routes;

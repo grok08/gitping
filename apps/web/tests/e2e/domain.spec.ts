@@ -47,7 +47,7 @@ test("the real API rejects a command that is not a message", async ({ page }) =>
   await page.getByRole("button", { name: "Send command" }).click();
 
   await expect(page.locator(".command-error")).toContainText(
-    'For the first message flow, use: git commit -m "message"',
+    "Unsupported command. Use git commit, git revert, git merge, git branch, git switch, or git stash.",
   );
 
   await saveScreenshot(page, "api-rejection");

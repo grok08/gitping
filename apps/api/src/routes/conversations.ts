@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { currentUserHandle } from "../current-user";
 import { checkRequestId, requestIdError } from "./request-id";
+import { sendCommandResponse } from "./command-response";
 import type { CommandService } from "../services/command-service";
 import type { ConversationService } from "../services/conversation-service";
 import type {
@@ -79,21 +80,7 @@ export function createConversationRoutes(
       requestId: requestId.requestId,
     });
 
-    if (!result.ok) {
-      if (result.reason === "request_conflict") {
-        return c.json({ error: result.error }, 409);
-      }
-
-      const status = result.reason === "unknown_conversation" ? 404 : 400;
-
-      return c.json({ error: result.error }, status);
-    }
-
-    if (result.replayed) {
-      c.header("Idempotent-Replay", "true");
-    }
-
-    return c.json({ message: result.message }, 201);
+    return sendCommandResponse(c, result);
   });
 
   routes.get("/conversations/:id/members", (c) => {
@@ -107,7 +94,7 @@ export function createConversationRoutes(
   });
 
   routes.get("/conversations/:id/branches", (c) => {
-    const result = conversations.branches(c.req.param("id"));
+    const result = conversations.branches(c.req.param("id"), currentUserHandle);
 
     if (!result.ok) {
       return c.json({ error: result.error }, 404);

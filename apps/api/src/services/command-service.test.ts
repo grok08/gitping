@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { CommandRequestRepository } from "../repositories/command-request-repository";
 import { createCommandRequestRepository } from "../repositories/command-request-repository";
-import { createTestCommandService } from "../test-helpers";
+import { createTestCommandService, sentMessage } from "../test-helpers";
 import type { CommandRequestRecord } from "../types/domain";
 
 describe("command service", () => {
@@ -45,11 +45,9 @@ describe("command service", () => {
   test("moves the branch head to the new message", () => {
     const { db, commands } = createTestCommandService();
 
-    const result = commands.send('git commit -m "move the head"', "grok08");
-
-    if (!result.ok) {
-      throw new Error("expected the command to succeed");
-    }
+    const message = sentMessage(
+      commands.send('git commit -m "move the head"', "grok08"),
+    );
 
     const branch = db
       .query(
@@ -57,7 +55,7 @@ describe("command service", () => {
       )
       .get() as { head_message_id: string };
 
-    expect(branch.head_message_id).toBe(result.message.id);
+    expect(branch.head_message_id).toBe(message.id);
   });
 
   test("attaches a message to the requested conversation and branch", () => {
@@ -102,7 +100,8 @@ describe("command service", () => {
     expect(result).toEqual({
       ok: false,
       reason: "invalid_command",
-      error: 'For the first message flow, use: git commit -m "message"',
+      error:
+        "Unsupported command. Use git commit, git revert, git merge, git branch, git switch, or git stash.",
     });
     expect(messages.list()).toHaveLength(0);
   });
@@ -197,6 +196,238 @@ describe("command service", () => {
   });
 });
 
+describe("branch commands", () => {
+  test("git branch lists branches with the member's current branch marked", () => {
+    const { messages, commands } = createTestCommandService();
+
+    const result = commands.send("git branch", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      kind: "branches",
+      branches: [
+        {
+          id: "branch-conv-engineering-main",
+          name: "main",
+          headMessageId: null,
+          current: true,
+        },
+        {
+          id: "branch-conv-engineering-weekend",
+          name: "weekend",
+          headMessageId: null,
+          current: false,
+        },
+        {
+          id: "branch-conv-engineering-feature-ui",
+          name: "feature-ui",
+          headMessageId: null,
+          current: false,
+        },
+      ],
+    });
+    expect(messages.list()).toHaveLength(0);
+  });
+
+  test("git branch <name> creates from the current head without moving it", () => {
+    const { db, messages, commands } = createTestCommandService();
+    const commit = sentMessage(
+      commands.send('git commit -m "base work"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+
+    const result = commands.send("git branch release", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    if (!result.ok || result.kind !== "branches") {
+      throw new Error("expected a branch list");
+    }
+
+    const created = result.branches.find((branch) => branch.name === "release");
+
+    expect(created).toMatchObject({
+      headMessageId: commit.id,
+      current: false,
+    });
+    expect(result.branches.find((branch) => branch.name === "main")).toMatchObject(
+      { current: true, headMessageId: commit.id },
+    );
+    expect(messages.list("conv-engineering")).toHaveLength(1);
+
+    const row = db
+      .query(
+        "SELECT created_from_branch_id FROM branches WHERE name = 'release'",
+      )
+      .get() as { created_from_branch_id: string };
+
+    expect(row.created_from_branch_id).toBe("branch-conv-engineering-main");
+  });
+
+  test("git branch rejects a duplicate name and an invalid name", () => {
+    const { commands } = createTestCommandService();
+
+    expect(
+      commands.send("git branch weekend", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "conflict",
+      error: "Branch already exists: weekend",
+    });
+
+    for (const name of ["HEAD", "a".repeat(41)]) {
+      expect(
+        commands.send(`git branch ${name}`, "grok08", {
+          conversationId: "conv-engineering",
+        }),
+      ).toEqual({
+        ok: false,
+        reason: "invalid_argument",
+        error: `Invalid branch name: ${name}`,
+      });
+    }
+
+    for (const name of ["-bad", "has space"]) {
+      expect(
+        commands.send(`git switch -c "${name}"`, "grok08", {
+          conversationId: "conv-engineering",
+        }),
+      ).toEqual({
+        ok: false,
+        reason: "invalid_argument",
+        error: `Invalid branch name: ${name}`,
+      });
+    }
+  });
+
+  test("git switch persists the member's current branch", () => {
+    const { db, commands } = createTestCommandService();
+
+    const result = commands.send("git switch weekend", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    if (!result.ok || result.kind !== "branches") {
+      throw new Error("expected a branch list");
+    }
+
+    expect(result.branches.find((branch) => branch.current)).toMatchObject({
+      name: "weekend",
+    });
+
+    const member = db
+      .query(
+        `SELECT current_branch_id FROM conversation_members
+         WHERE conversation_id = 'conv-engineering' AND user_id = 'user-grok08'`,
+      )
+      .get() as { current_branch_id: string };
+
+    expect(member.current_branch_id).toBe("branch-conv-engineering-weekend");
+  });
+
+  test("git switch rejects an unknown branch", () => {
+    const { commands } = createTestCommandService();
+
+    expect(
+      commands.send("git switch release", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "unknown_branch",
+      error: "Unknown branch: release",
+    });
+  });
+
+  test("git switch -c creates the branch at the current head and switches to it", () => {
+    const { db, messages, commands } = createTestCommandService();
+    const commit = sentMessage(
+      commands.send('git commit -m "before the branch"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+
+    const result = commands.send("git switch -c release", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    if (!result.ok || result.kind !== "branches") {
+      throw new Error("expected a branch list");
+    }
+
+    const created = result.branches.find((branch) => branch.name === "release");
+
+    expect(created).toMatchObject({ current: true, headMessageId: commit.id });
+    expect(result.branches.find((branch) => branch.name === "main")).toMatchObject(
+      { current: false },
+    );
+    expect(messages.list("conv-engineering")).toHaveLength(1);
+
+    const member = db
+      .query(
+        `SELECT current_branch_id FROM conversation_members
+         WHERE conversation_id = 'conv-engineering' AND user_id = 'user-grok08'`,
+      )
+      .get() as { current_branch_id: string };
+
+    if (!created) {
+      throw new Error("expected the new branch in the list");
+    }
+
+    expect(member.current_branch_id).toBe(created.id);
+  });
+
+  test("a persisted branch carries the next commit when the request names none", () => {
+    const { db, commands } = createTestCommandService();
+
+    commands.send("git switch weekend", "grok08", {
+      conversationId: "conv-engineering",
+    });
+    const commit = sentMessage(
+      commands.send('git commit -m "weekend only"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+    const row = db
+      .query("SELECT branch_id FROM messages WHERE id = $id")
+      .get({ $id: commit.id }) as { branch_id: string };
+
+    expect(row.branch_id).toBe("branch-conv-engineering-weekend");
+  });
+
+  test("switching in one conversation leaves another member's view alone", () => {
+    const { db, commands } = createTestCommandService();
+
+    commands.send("git switch weekend", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    const rahul = db
+      .query(
+        `SELECT current_branch_id FROM conversation_members
+         WHERE conversation_id = 'conv-engineering' AND user_id = 'user-rahul'`,
+      )
+      .get() as { current_branch_id: string | null };
+
+    expect(rahul.current_branch_id).toBeNull();
+
+    const listed = commands.send("git branch", "rahul", {
+      conversationId: "conv-engineering",
+    });
+
+    if (!listed.ok || listed.kind !== "branches") {
+      throw new Error("expected a branch list");
+    }
+
+    expect(listed.branches.find((branch) => branch.current)?.name).toBe("main");
+  });
+});
+
 describe("idempotent commands", () => {
   test("returns the stored message for a repeated request id without writing or publishing again", () => {
     const { db, messages, events, commands } = createTestCommandService();
@@ -208,7 +439,12 @@ describe("idempotent commands", () => {
       requestId: "request-retry-1",
     });
 
-    if (!first.ok || !second.ok) {
+    if (
+      !first.ok ||
+      first.kind !== "message" ||
+      !second.ok ||
+      second.kind !== "message"
+    ) {
       throw new Error("expected both attempts to succeed");
     }
 
@@ -281,35 +517,28 @@ describe("idempotent commands", () => {
   test("creates a second message for a different request id", () => {
     const { messages, commands } = createTestCommandService();
 
-    const first = commands.send('git commit -m "same words"', "grok08", {
-      requestId: "request-distinct-1",
-    });
+    const firstMessage = sentMessage(
+      commands.send('git commit -m "same words"', "grok08", {
+        requestId: "request-distinct-1",
+      }),
+    );
     const second = commands.send('git commit -m "same words"', "grok08", {
       requestId: "request-distinct-2",
     });
 
-    if (!first.ok || !second.ok) {
-      throw new Error("expected both commands to succeed");
-    }
-
-    expect(second.replayed).toBe(false);
-    expect(second.message.id).not.toBe(first.message.id);
+    expect(second.ok && second.kind === "message" && second.replayed).toBe(false);
+    expect(sentMessage(second).id).not.toBe(firstMessage.id);
     expect(messages.list()).toHaveLength(2);
   });
 
   test("keeps one commit per request when no request id is sent", () => {
     const { messages, commands } = createTestCommandService();
 
-    const first = commands.send('git commit -m "ping"', "grok08");
+    const first = sentMessage(commands.send('git commit -m "ping"', "grok08"));
     const second = commands.send('git commit -m "ping"', "grok08");
 
-    if (!first.ok || !second.ok) {
-      throw new Error("expected both commands to succeed");
-    }
-
-    expect(first.replayed).toBe(false);
-    expect(second.replayed).toBe(false);
-    expect(second.message.id).not.toBe(first.message.id);
+    expect(second.ok && second.kind === "message" && second.replayed).toBe(false);
+    expect(sentMessage(second).id).not.toBe(first.id);
     expect(messages.list()).toHaveLength(2);
   });
 
@@ -320,9 +549,7 @@ describe("idempotent commands", () => {
       requestId: "request-race-1",
     });
 
-    if (!winner.ok) {
-      throw new Error("expected the first request to succeed");
-    }
+    const winnerMessage = sentMessage(winner);
 
     // Two identical requests can both pass the replay lookup. This wrapper
     // hides the winner's row from exactly one lookup, so the second attempt
@@ -351,12 +578,12 @@ describe("idempotent commands", () => {
       requestId: "request-race-1",
     });
 
-    if (!replay.ok) {
+    if (!replay.ok || replay.kind !== "message") {
       throw new Error("expected the duplicate to replay, not fail");
     }
 
     expect(replay.replayed).toBe(true);
-    expect(replay.message.id).toBe(winner.message.id);
+    expect(replay.message.id).toBe(winnerMessage.id);
     expect(messages.list()).toHaveLength(1);
     expect(loser.events.events).toHaveLength(0);
 
@@ -368,6 +595,6 @@ describe("idempotent commands", () => {
       )
       .get() as { head_message_id: string };
 
-    expect(branch.head_message_id).toBe(winner.message.id);
+    expect(branch.head_message_id).toBe(winnerMessage.id);
   });
 });

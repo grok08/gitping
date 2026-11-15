@@ -34,7 +34,7 @@ describe("HTTP API", () => {
     expect(await response.json()).toEqual({
       status: "ok",
       database: true,
-      schemaVersion: 2,
+      schemaVersion: 3,
     });
   });
 
@@ -366,16 +366,19 @@ describe("conversation HTTP API", () => {
         id: "branch-conv-engineering-main",
         name: "main",
         headMessageId: null,
+        current: true,
       },
       {
         id: "branch-conv-engineering-weekend",
         name: "weekend",
         headMessageId: null,
+        current: false,
       },
       {
         id: "branch-conv-engineering-feature-ui",
         name: "feature-ui",
         headMessageId: null,
+        current: false,
       },
     ]);
   });
@@ -510,6 +513,160 @@ describe("idempotent command HTTP API", () => {
     expect(conflict.status).toBe(409);
     expect(await conflict.json()).toEqual({
       error: "Request id already used for another command",
+    });
+  });
+});
+
+describe("branch command HTTP API", () => {
+  test("answers a branch context command with the branch list", async () => {
+    const app = createTestApp();
+
+    const listed = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git branch" }),
+    );
+
+    expect(listed.status).toBe(200);
+    expect(await listed.json()).toEqual({
+      branches: [
+        {
+          id: "branch-conv-engineering-main",
+          name: "main",
+          headMessageId: null,
+          current: true,
+        },
+        {
+          id: "branch-conv-engineering-weekend",
+          name: "weekend",
+          headMessageId: null,
+          current: false,
+        },
+        {
+          id: "branch-conv-engineering-feature-ui",
+          name: "feature-ui",
+          headMessageId: null,
+          current: false,
+        },
+      ],
+    });
+
+    const messages = (await (
+      await app.request("/conversations/conv-engineering/messages")
+    ).json()) as unknown[];
+
+    expect(messages).toHaveLength(0);
+  });
+
+  test("creates a branch and rejects the duplicate with 409", async () => {
+    const app = createTestApp();
+
+    const created = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git branch release" }),
+    );
+
+    expect(created.status).toBe(200);
+
+    const body = (await created.json()) as {
+      branches: Array<{ name: string; current: boolean }>;
+    };
+
+    expect(body.branches.map((branch) => branch.name)).toContain("release");
+    expect(body.branches.find((branch) => branch.current)?.name).toBe("main");
+
+    const duplicate = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git branch release" }),
+    );
+
+    expect(duplicate.status).toBe(409);
+    expect(await duplicate.json()).toEqual({
+      error: "Branch already exists: release",
+    });
+  });
+
+  test("switches the current branch and reports it on the branch list", async () => {
+    const app = createTestApp();
+
+    const switched = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git switch weekend" }),
+    );
+
+    expect(switched.status).toBe(200);
+
+    const body = (await switched.json()) as {
+      branches: Array<{ name: string; current: boolean }>;
+    };
+
+    expect(body.branches.find((branch) => branch.current)?.name).toBe("weekend");
+
+    const listed = (await (
+      await app.request("/conversations/conv-engineering/branches")
+    ).json()) as Array<{ name: string; current: boolean }>;
+
+    expect(listed.find((branch) => branch.current)?.name).toBe("weekend");
+  });
+
+  test("rejects an unknown branch and an invalid name with 400", async () => {
+    const app = createTestApp();
+
+    const unknown = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git switch release" }),
+    );
+
+    expect(unknown.status).toBe(400);
+    expect(await unknown.json()).toEqual({ error: "Unknown branch: release" });
+
+    const invalid = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: 'git switch -c "has space"' }),
+    );
+
+    expect(invalid.status).toBe(400);
+    expect(await invalid.json()).toEqual({
+      error: "Invalid branch name: has space",
+    });
+  });
+
+  test("answers the compatibility route with the same union", async () => {
+    const app = createTestApp();
+
+    const response = await postCommand(
+      app,
+      JSON.stringify({ input: "git branch", conversation: "weekend" }),
+    );
+
+    expect(response.status).toBe(200);
+
+    const body = (await response.json()) as {
+      branches?: Array<{ name: string; current: boolean }>;
+    };
+
+    expect(body.branches?.map((branch) => branch.name)).toEqual(["main"]);
+    expect(body.branches?.[0]?.current).toBe(true);
+  });
+
+  test("keeps a rejected command at 400 with the supported set", async () => {
+    const app = createTestApp();
+
+    const response = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git log" }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error:
+        "Unsupported command. Use git commit, git revert, git merge, git branch, git switch, or git stash.",
     });
   });
 });

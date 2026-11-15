@@ -26,9 +26,10 @@ export type CommandRequest = {
   requestId?: string;
 };
 
-export type CommandResponse = {
-  message: MessageRecord;
-};
+export type CommandResponse =
+  | { message: MessageRecord }
+  | { branches: BranchSummary[] }
+  | { stashes: StashRecord[] };
 
 export type ErrorResponse = {
   error: string;
@@ -55,6 +56,15 @@ export type BranchSummary = {
   id: string;
   name: string;
   headMessageId: string | null;
+  /** This member's current branch, which is what a reload restores. */
+  current: boolean;
+};
+
+export type StashRecord = {
+  id: string;
+  text: string;
+  note: string | null;
+  createdAt: string;
 };
 
 export type CreateConversationRequest = {
