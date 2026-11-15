@@ -145,6 +145,39 @@ test("suggestions complete a switch without sending", async ({ browser }) => {
   }
 });
 
+test("Tab accepts a suggestion and Escape closes the popup", async ({
+  browser,
+}) => {
+  const { context, page } = await openClientContext(browser);
+
+  try {
+    const rows = await page.locator(".message-row").count();
+    const input = composer(page);
+
+    await input.fill("git sw");
+    await expect(page.locator(".composer-suggestions")).toBeVisible();
+    await expect(input).toHaveAttribute("aria-expanded", "true");
+    await expect(input).toHaveAttribute("aria-controls", "composer-suggestions");
+    await expect(input).toHaveAttribute(
+      "aria-activedescendant",
+      "composer-suggestions-option-0",
+    );
+
+    await page.keyboard.press("Tab");
+    await expect(input).toHaveValue("git switch ");
+    await expect(page.locator(".composer-suggestions")).toBeVisible();
+    await saveScreenshot(page, "keyboard-tab-accept");
+
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".composer-suggestions")).toHaveCount(0);
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await expect(input).toHaveValue("git switch ");
+    await expect(page.locator(".message-row")).toHaveCount(rows);
+  } finally {
+    await context.close();
+  }
+});
+
 test("a sent command is recalled with ArrowUp and restored with ArrowDown", async ({
   browser,
 }) => {
@@ -166,6 +199,14 @@ test("a sent command is recalled with ArrowUp and restored with ArrowDown", asyn
     await expect(composer(page)).toHaveValue(command);
     await saveScreenshot(page, "history-recall");
 
+    await page.keyboard.press("ArrowDown");
+    await expect(composer(page)).toHaveValue("");
+
+    // Sending a recalled command clears the composer from outside the
+    // completion path; a stale cursor must not turn ArrowDown into a recall.
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("Enter");
+    await expect(composer(page)).toHaveValue("");
     await page.keyboard.press("ArrowDown");
     await expect(composer(page)).toHaveValue("");
   } finally {
@@ -201,6 +242,16 @@ test("the server rejection replaces the local reading inline", async ({
     );
     await expect(page.locator(".message-row")).toHaveCount(rows);
     await saveScreenshot(page, "inline-error-server");
+
+    // Dismissing one rejection must not silence the next one for the same
+    // text, which is a retry of the same intent.
+    await page.getByRole("button", { name: "Dismiss error" }).click();
+    await expect(page.locator(".composer-tray .command-error")).toHaveCount(0);
+    await composer(page).click();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".composer-tray .command-error")).toContainText(
+      serverRejection,
+    );
   } finally {
     await context.close();
   }

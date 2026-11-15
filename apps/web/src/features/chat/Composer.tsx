@@ -54,6 +54,12 @@ export function Composer({
     setHighlight(0);
     setDismissed(false);
     setDismissedError(false);
+
+    // A value changed from outside a completion is a parent clear, so the
+    // history walk has to start over or ArrowDown would conjure a command.
+    if (pendingCaret.current === null) {
+      setCursor({ index: null, draft: "" });
+    }
   }
 
   const reading = { ...context, caret };
@@ -67,7 +73,9 @@ export function Composer({
   const highlighted =
     suggestions.length > 0 ? Math.min(highlight, suggestions.length - 1) : 0;
   const hasHint = validation.hint !== "" || validation.preview !== "";
-  const message = dismissedError ? "" : error || validation.message;
+  // A server rejection is always shown, even after an earlier dismissal. The
+  // dismissal only silences the local reading until the text changes.
+  const message = error || (dismissedError ? "" : validation.message);
 
   useLayoutEffect(() => {
     const target = pendingCaret.current;
@@ -96,6 +104,17 @@ export function Composer({
   }
 
   function apply(next: string, nextCaret: number) {
+    if (next === value) {
+      // A history step at the oldest entry returns the same text. Move the
+      // caret directly instead of leaving a pending position to leak into the
+      // next unrelated edit.
+      pendingCaret.current = null;
+      inputRef.current?.focus();
+      inputRef.current?.setSelectionRange(nextCaret, nextCaret);
+      setCaret(nextCaret);
+      return;
+    }
+
     pendingCaret.current = nextCaret;
     onChange(next);
   }
@@ -196,6 +215,12 @@ export function Composer({
                 onChange(event.currentTarget.value);
               }}
               onSelect={(event) =>
+                setCaret(event.currentTarget.selectionStart ?? 0)
+              }
+              onKeyUp={(event) =>
+                setCaret(event.currentTarget.selectionStart ?? 0)
+              }
+              onClick={(event) =>
                 setCaret(event.currentTarget.selectionStart ?? 0)
               }
               onFocus={() => setFocused(true)}

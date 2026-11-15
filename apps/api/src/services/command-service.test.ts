@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { supportedCommandEntries } from "@gitping/command-engine";
+import { supportedCommandNames } from "@gitping/command-engine";
 import type { CommandRequestRepository } from "../repositories/command-request-repository";
 import { createCommandRequestRepository } from "../repositories/command-request-repository";
 import { createMessageRepository } from "../repositories/message-repository";
@@ -108,17 +108,36 @@ describe("command service", () => {
     expect(messages.list()).toHaveLength(0);
   });
 
-  test("accepts every command the catalog marks as supported", () => {
-    for (const entry of supportedCommandEntries()) {
-      const { commands } = createTestCommandService();
-      const result = commands.send(entry.example, "grok08");
-      const accepted = result.ok || result.reason !== "invalid_command";
+  test("executes every command the catalog marks as supported", () => {
+    const { commands } = createTestCommandService();
+    const executed = new Set<string>();
 
-      expect({ name: entry.name, accepted }).toEqual({
-        name: entry.name,
-        accepted: true,
-      });
-    }
+    expect(commands.send('git commit -m "base"', "grok08").ok).toBe(true);
+    executed.add("commit");
+
+    const reverted = sentMessage(
+      commands.send('git commit -m "revert me"', "grok08"),
+    );
+
+    expect(commands.send(`git revert ${reverted.id}`, "grok08").ok).toBe(true);
+    executed.add("revert");
+
+    expect(commands.send("git branch side", "grok08").ok).toBe(true);
+    executed.add("branch");
+
+    expect(commands.send("git switch side", "grok08").ok).toBe(true);
+    executed.add("switch");
+
+    expect(commands.send('git commit -m "side line"', "grok08").ok).toBe(true);
+    expect(commands.send("git switch main", "grok08").ok).toBe(true);
+    expect(commands.send("git merge side", "grok08").ok).toBe(true);
+    executed.add("merge");
+
+    expect(commands.send('git commit -m "stash me"', "grok08").ok).toBe(true);
+    expect(commands.send("git stash", "grok08").ok).toBe(true);
+    executed.add("stash");
+
+    expect([...executed].sort()).toEqual([...supportedCommandNames()].sort());
   });
 
   test("rejects input that is not a supported Git command", () => {

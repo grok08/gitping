@@ -150,6 +150,37 @@ describe("command suggestions", () => {
     expect(applied.caret).toBe(applied.value.length - 1);
   });
 
+  test("an empty quoted message waits for text instead of erroring", () => {
+    const validation = validateCommand('git commit -m ""', context);
+
+    expect(validation.state).toBe("incomplete");
+    expect(validation.message).toBe("");
+    expect(validation.hint).toContain("message text");
+    expect(suggestCommands('git commit -m ""', context)).toEqual([]);
+    expect(validateCommand('git stash push -m ""', context).state).toBe(
+      "incomplete",
+    );
+    expect(validateCommand('git switch -c ""', context)).toMatchObject({
+      state: "incomplete",
+      hint: expect.stringContaining("new branch name"),
+    });
+  });
+
+  test("accepting a suggestion before an existing token keeps a separator", () => {
+    const items = suggestCommands("git switch main", { ...context, caret: 11 });
+    const weekend = items.find((item) => item.insert === "weekend");
+
+    expect(weekend).toBeDefined();
+
+    if (!weekend) {
+      return;
+    }
+
+    expect(completeCommand("git switch main", weekend).value).toBe(
+      "git switch weekend main",
+    );
+  });
+
   test("nothing is suggested for an empty or unsupported input", () => {
     expect(suggestCommands("", context)).toEqual([]);
     expect(suggestCommands("git log", context)).toEqual([]);
@@ -286,6 +317,19 @@ describe("command validation", () => {
       state: "invalid",
       message: "Unterminated quote",
     });
+  });
+
+  test("parser-valid shapes the composer does not model are complete", () => {
+    expect(validateCommand('git commit --amend -m "hi"', context)).toMatchObject({
+      state: "complete",
+      preview: "Commit to #engineering on main",
+    });
+    expect(validateCommand("git commit --message=hi", context).state).toBe(
+      "complete",
+    );
+    expect(validateCommand('git commit -m "hi" --amend', context).state).toBe(
+      "complete",
+    );
   });
 
   test("analysis reports the stage the caret is in", () => {

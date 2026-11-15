@@ -286,6 +286,23 @@ function matchForm(
     return null;
   }
 
+  // An empty quoted token is a value slot the user has opened but not filled.
+  // The parser drops it and calls the command malformed, so read it as still
+  // waiting for an argument instead of showing a parser error on a skeleton
+  // the composer itself inserted.
+  if (argToken.text === "") {
+    return {
+      form,
+      stage: "argument",
+      literalIndex: form.literals.length,
+      consumed: form.literals.length,
+      prefix: "",
+      tokenStart: argToken.start,
+      tokenEnd: argToken.end,
+      arg: null,
+    };
+  }
+
   return {
     form,
     stage: "complete",
@@ -427,8 +444,25 @@ export function analyzeCommandInput(
   const match = selectMatch(entry, tokens.slice(2), position, trailingSpace);
 
   if (!match) {
+    // The catalog models the shapes GitPing teaches, but the parser is the
+    // authority on what is a command. A parser-valid form the composer does
+    // not model, such as `git commit --amend -m "hi"`, is complete rather than
+    // an error, because the server accepts it.
     try {
-      parseCommand(input);
+      const command = parseCommand(input);
+      const form = entry.forms[0];
+
+      if (form) {
+        return {
+          state: "complete",
+          entry,
+          form,
+          command,
+          arg: null,
+          tokenStart: position,
+          tokenEnd: position,
+        };
+      }
     } catch (error) {
       return { state: "invalid", entry, message: parserMessage(error) };
     }
@@ -662,7 +696,7 @@ function argumentSuggestions(
 ): CommandSuggestion[] {
   switch (entry.name) {
     case "commit": {
-      if (prefix !== "") {
+      if (prefix !== "" || tokenStart !== tokenEnd) {
         return [];
       }
 
@@ -839,6 +873,17 @@ export function completeCommand(
 
   if (/^\s/.test(after) && /\s$/.test(insertion)) {
     insertion = insertion.trimEnd();
+  }
+
+  // The mirror case: an insertion before an existing token needs a separator,
+  // or `git switch |main` completed to `weekend` would read `mainmain`.
+  if (
+    suggestion.replaceStart === suggestion.replaceEnd &&
+    after.length > 0 &&
+    !/^\s/.test(after) &&
+    !/\s$/.test(insertion)
+  ) {
+    insertion = `${insertion} `;
   }
 
   return {
