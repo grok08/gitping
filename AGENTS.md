@@ -25,6 +25,15 @@ cd apps/web
 bun x playwright install chromium
 ```
 
+## Branching, commits, and pushing
+
+- Work on local `master`. Do not create phase branches, feature branches, or worktrees unless the user asks for one.
+- Commit on `master` locally as work lands, in small ordered commits.
+- Do not push. A push, a remote branch operation, a tag, or a force push happens only after the user approves it in that turn.
+- When work is ready, say what is on local `master` and that it is waiting for a push decision. "Done" never means "pushed".
+- If a task genuinely needs isolation, for example two changes in flight at once, ask before branching.
+- Never rewrite published history.
+
 ## Working in this repo
 
 - Package manager is Bun. Install from the repo root with `bun install`.
