@@ -4,7 +4,7 @@ Phase 5 is "Git-native conversation model". Branches, revert, stash, and merge a
 
 ## Result
 
-Complete. `bun run check` exits 0 with 187 unit and integration tests across 15 files and 27 browser tests. Migration 3 stores the member's current branch, four commands became real (`git branch`, `git switch`, `git revert`, `git merge`, plus the three `git stash` forms), both command routes answer an untagged union of `{ message }`, `{ branches }`, or `{ stashes }`, and a new `message.updated` frame carries a reverted or stashed row to every client in the conversation. A branch switch survives a reload, a reverted message keeps its place with a pill, a stashed message leaves the chat until a pop restores it, and a merge records both heads.
+Complete. `bun run check` exits 0 with 187 unit and integration tests across 15 files and 27 browser tests. Migration 3 stores the member's current branch; `git branch`, `git switch`, `git revert`, `git merge`, and the three `git stash` forms are real commands now; both command routes answer an untagged union of `{ message }`, `{ branches }`, or `{ stashes }`; and a new `message.updated` frame carries a reverted or stashed row to every client in the conversation. A branch switch survives a reload, a reverted message keeps its place with a pill, a stashed message leaves the chat until a pop restores it, and a merge records both heads.
 
 ## Commands and results
 
@@ -173,7 +173,7 @@ messages: 18, commands: 18, message events: 22
   events: created (one per message), reverted, stashed, unstashed, merged
   message state: two rows with reverted = 1 and 0, every other row 0
   conversations: 6 seeded + 10 created by the Phase 3, 4, and 5 browser tests
-  branches: 8 seeded + one main per created conversation + release, feature, shared-head
+  branches: 8 seeded + one main per created conversation (10) + release + feature
   conversation_members: 31
     seeded members are NULL and resolve to main (the seed runs after migration 3)
     phase-five-switch: current_branch = release
