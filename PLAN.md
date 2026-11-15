@@ -50,7 +50,8 @@ The next work should move from "single local vertical slice" to "real multi-user
 | 2. Model GitPing properly | Complete | `evidence/phase-2/README.md` |
 | 3. Real conversation persistence | Complete | `evidence/phase-3/README.md` |
 | 4. Real-time messaging | Complete | `evidence/phase-4/README.md` |
-| 5 through 12 | Not started | |
+| 5. Git-native conversation model | Complete | `evidence/phase-5/README.md` |
+| 6 through 12 | Not started | |
 
 ---
 
@@ -351,6 +352,10 @@ git merge <branch>
 for combining branches of a conversation.
 
 The semantics must be clearly defined before implementation.
+
+## Phase 5 result
+
+Complete. Branches, revert, merge, and stash are persisted operations, defined in `docs/phase-5-git-native.md` and implemented against it. Content commands (`commit`, `revert`, `merge`) produce messages; context commands (`branch`, `switch`, `stash`) return state and produce none. A member's branch lives on `conversation_members.current_branch_id`, message state is derived from `message_events`, and a `message.updated` frame carries revert and stash changes to every connected client. Migration 3 adds the branch column and its backfill; migrations 1 and 2 are untouched. Evidence, including the review's negative control, is in `evidence/phase-5/README.md`.
 
 ---
 

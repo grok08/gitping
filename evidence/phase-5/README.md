@@ -194,6 +194,15 @@ The revert test's target still exists with `reverted: 1`, next to its revert mes
 
 All 8 baselines pass unchanged with no `--update-snapshots` run. No baseline shows a reverted message, a stashed message, or a non-`commit` verb pill, so the new styling sits outside them. The Phase 3 and Phase 4 specs recapture their own screenshots on every run, so those folders were restored to their committed state after the final run; only `evidence/phase-5/screenshots/` is new.
 
+## Independent review
+
+The reviewer ran the gate on the committed tree and negative-controlled the newest proofs:
+
+- `bun run check`: exit 0, 187 unit tests across 15 files, 27 browser tests, build 255.72 kB, on the same code that is committed.
+- Negative control: making `publishUpdate` return early, so no `message.updated` frame is sent, makes the revert and stash browser tests fail and leaves the switch and merge tests passing. The live assertions are not vacuous.
+- What that control also showed: the actor's own revert pill and stash disappearance depend on the broadcast, not on the HTTP response. A lost broadcast therefore needs a reload to repair the actor's view, which is the same outbox gap Phase 4 documented, now visible on the person who sent the command.
+- Code read against the spec: prefix resolution matches with `substr`, not `LIKE`, so `%` and `_` cannot widen a target; the merge event captures the target head before the transaction moves it; the message flags use one shared expression for the column and the not-stashed filter, so they cannot disagree; a replayed command publishes nothing.
+
 ## Remaining risk and limits
 
 - **No ancestry graph.** A merge compares only the two heads. It cannot detect a real common ancestor or fast-forward, so "already up to date" means "the heads are equal", not "there is nothing to merge". This is the honest limit of the recorded-event model.
