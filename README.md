@@ -114,8 +114,9 @@ The frontend currently provides:
 - `git revert` with a reverted pill, reduced emphasis, and the original row kept in history
 - `git merge` that records both heads as a merge message
 - `git stash`, `git stash list`, and `git stash pop` with a transient count notice
-- conversation search
-- global search
+- conversation search served by the API, across every branch, with a branch label on hits from another branch
+- a `Ctrl+K` palette that searches messages, conversations, people, and branches, with `author:`, `command:`, `branch:`, `after:`, and `before:`
+- opening a search hit selects its conversation, person, branch, or message, and a message jump scrolls to the row and highlights it
 - workspace members (local data until Phase 8)
 - conversation members loaded from the API
 - notifications panel
@@ -146,6 +147,7 @@ gitping/
 │   │       ├── services/         # business logic
 │   │       ├── repositories/     # SQL
 │   │       ├── realtime/         # connection hub, frames, WebSocket route
+│   │       ├── search/           # query parser and message snippets
 │   │       └── types/
 │   │
 │   └── web/
@@ -153,8 +155,8 @@ gitping/
 │           ├── App.tsx           # composition root
 │           ├── features/         # chat, conversations, branch, search, members, workspace
 │           ├── components/ui/    # avatar, presence dot, side panel
-│           ├── hooks/            # theme, sidebar, shortcuts, connection socket
-│           ├── lib/              # API client, message merge, realtime parsing, formatting
+│           ├── hooks/            # theme, sidebar, shortcuts, search requests, connection socket
+│           ├── lib/              # API client, message merge, realtime parsing, search helpers, formatting
 │           ├── data/             # workspace members (local until Phase 8)
 │           ├── styles/           # tokens, globals, responsive, import order
 │           └── types/

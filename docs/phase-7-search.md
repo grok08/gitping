@@ -1,6 +1,6 @@
 # Phase 7: Search
 
-Status: planned, ready for implementation. This document is the contract the implementation is reviewed against. PLAN.md says Phase 7 turns the current UI into real backend search. This is the definition of what that search means.
+Status: implemented. This document is the contract the implementation is reviewed against, and the summary at the end records where the implementation departed from the first draft. PLAN.md says Phase 7 turns the current UI into real backend search. This is the definition of what that search means.
 
 ## Goal
 
@@ -321,3 +321,23 @@ Each slice ends with `bun run typecheck`, `bun run lint`, and `bun run test` gre
 - The message list currently scrolls to the bottom whenever messages change. A jump must suppress that once, or the row it targets scrolls away.
 - The mocked e2e API needs `/search` and `/conversations/:id/search`. `visual.spec.ts` opens the conversation search with the query `Ready` and asserts `1 result`, so that baseline is the first candidate to change. A change there is a finding to record, not a silent refresh.
 - Membership is not enforced anywhere yet, so search is exactly as private as the sidebar is today. The evidence must say so in plain words.
+
+## Implementation notes
+
+Five things changed after the first draft, and the implemented contract is this section plus the rest of the document.
+
+1. **Terms combine with AND.** Text is still a case-insensitive substring, now matched once per term, so `login flow` finds "flow of login" and `"login flow"` stays one phrase. The response carries `terms` so the client highlights the same words the server matched.
+2. **The rejection sentence uses the catalog's list formatter**, so it ends "or stash" rather than with a plain comma list. The table above was corrected.
+3. **Date filters echo the typed value.** `after:2026-10-01` comes back as `2026-10-01`, not as a normalized timestamp. `searchCriteria` converts the typed value to the bound the repository compares.
+4. **Only a hit from another branch is labelled.** A hit on the visible branch renders without a branch pill, because a label on every row is noise. Conversation search still labels the other branch, which is the case the requirement cares about.
+5. **No existing baseline changed.** The eight Phase 1 baselines stayed byte-identical, and two new baselines cover the palette idle and results states. The first parity run did change `conversation-search.png` because every hit carried a `main` pill, and fixing the pill rule restored the baseline without a refresh.
+
+## Implementation notes
+
+The implementation follows this contract, with five recorded departures.
+
+- Text is every term, not one contiguous phrase. `login flow` finds "flow of login" and `"login flow"` finds only the phrase. This is a superset of the client filter it replaced, and the response carries `terms` so the client highlights the same words.
+- The unknown-command sentence is built by `formatCommandList`, so it ends "commit, revert, merge, branch, switch, or stash". The Rejections table above was updated to match.
+- The parsed filters echo the value the member typed. `searchCriteria` converts a date to the ISO bound the repository compares, so a wire value and a bound never have to be the same string.
+- A conversation-search hit carries a branch pill only when the hit's branch differs from the visible branch. The first parity run caught a `main` pill on every row and the client now suppresses it, which is what keeps the existing baselines byte-identical.
+- The two palette baselines named under Visual parity were added, and the eight existing baselines stayed byte-identical.

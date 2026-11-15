@@ -40,6 +40,7 @@ Current foundation includes:
 - Workspace and conversation member panels
 - Branch selector with transient top-center notification
 - Command autocomplete, validation, history, help, and preview in the composer
+- Server search across messages, conversations, people, and branches, with `author:`, `command:`, `branch:`, `after:`, and `before:`
 
 The next work should move from "single local vertical slice" to "real multi-user Git-native messaging."
 
@@ -53,7 +54,7 @@ The next work should move from "single local vertical slice" to "real multi-user
 | 4. Real-time messaging | Complete | `evidence/phase-4/README.md` |
 | 5. Git-native conversation model | Complete | `evidence/phase-5/README.md` |
 | 6. Command experience | Complete | `evidence/phase-6/README.md` |
-| 7. Search | Planned | `docs/phase-7-search.md` |
+| 7. Search | Complete | `evidence/phase-7/README.md` |
 | 8 through 12 | Not started | |
 
 ---
@@ -449,6 +450,10 @@ The work is six slices, ending with browser evidence in `evidence/phase-7/`:
 4. The palette, its keyboard model, and the four hit behaviors.
 5. Conversation search moved off the client filter, with branch labels and jump-to-message focus.
 6. Real-API browser tests, screenshots, database dump, and visual baselines.
+
+## Phase 7 result
+
+Complete. One parser owns the query grammar, one repository owns every search query, and two routes share one message-hit shape. `GET /search` answers with conversations, people, branches, and message hits with a total per group; `GET /conversations/:id/search` answers with one conversation's hits and labels the branch. `Ctrl+K` opens a palette with keyboard navigation and four hit behaviors, and the chat search bar asks the same server. All five filters land, with specific rejection sentences. No migration ran, so the schema stays at version 3. The eight existing visual baselines are byte-identical and two new ones cover the palette. Evidence is in `evidence/phase-7/README.md`.
 
 ---
 
