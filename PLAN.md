@@ -39,6 +39,7 @@ Current foundation includes:
 - Global and conversation-scoped search UI
 - Workspace and conversation member panels
 - Branch selector with transient top-center notification
+- Command autocomplete, validation, history, help, and preview in the composer
 
 The next work should move from "single local vertical slice" to "real multi-user Git-native messaging."
 
@@ -51,7 +52,9 @@ The next work should move from "single local vertical slice" to "real multi-user
 | 3. Real conversation persistence | Complete | `evidence/phase-3/README.md` |
 | 4. Real-time messaging | Complete | `evidence/phase-4/README.md` |
 | 5. Git-native conversation model | Complete | `evidence/phase-5/README.md` |
-| 6 through 12 | Not started | |
+| 6. Command experience | Complete | `evidence/phase-6/README.md` |
+| 7. Search | Planned | `docs/phase-7-search.md` |
+| 8 through 12 | Not started | |
 
 ---
 
@@ -387,6 +390,10 @@ $ git sw
 
 The command experience should feel like an excellent developer tool while the conversation itself still feels like a chat application.
 
+## Phase 6 result
+
+Complete. One typed catalog in `packages/command-engine` describes every supported command, and the server builds its rejection sentence from it. The composer reads its own text through pure functions into empty, incomplete, invalid, and complete states, suggests the next word from the conversation's branches and messages, recalls the last 50 commands from browser storage, previews what a command will do, and shows the server's rejection under the composer. The server keeps authority, so a locally valid command can still fail on state. No migration, no new endpoint, and no schema change. Evidence, including the visual parity record, is in `evidence/phase-6/README.md`.
+
 ---
 
 # Phase 7 — Search
@@ -422,6 +429,26 @@ command:commit
 branch:feature-ui
 after:2026-10-01
 ```
+
+## Phase 7 plan
+
+Planned. `docs/phase-7-search.md` is the contract, and it is the definition the implementation is reviewed against.
+
+Four decisions are settled and written down there.
+
+- Matching is a case-insensitive substring, the same behavior both search boxes have today, over one SQL path with no migration and no index to keep in sync.
+- `Ctrl+K` opens a new overlay palette with grouped results and keyboard navigation. The sidebar input stays a local filter over conversation names and previews.
+- Conversation search covers the whole conversation, not just the visible branch, and labels hits from another branch. The chat list is already conversation-wide, so a narrower search would hide a message the member can scroll to.
+- All five filters land in this phase: `author:`, `command:`, `branch:`, `after:`, and `before:`.
+
+The work is six slices, ending with browser evidence in `evidence/phase-7/`:
+
+1. Contract and plan.
+2. Query parser, search repository, and `GET /search` over text only.
+3. Filters, limits, totals, and `GET /conversations/:id/search`.
+4. The palette, its keyboard model, and the four hit behaviors.
+5. Conversation search moved off the client filter, with branch labels and jump-to-message focus.
+6. Real-API browser tests, screenshots, database dump, and visual baselines.
 
 ---
 
