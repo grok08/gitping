@@ -787,13 +787,20 @@ export function suggestCommands(
       context,
       analysis.tokenStart,
       analysis.tokenEnd,
-    ).slice(0, maximumSuggestions);
+    )
+      .filter((suggestion) => suggestion.insert !== analysis.prefix)
+      .slice(0, maximumSuggestions);
   }
 
   // A syntactically complete command can still be mid-argument, as in
   // "git switch fe". The parser accepts any name; only the server knows which
-  // ones exist, so the known names stay on offer without blocking Enter.
-  if (analysis.state === "complete" && analysis.arg !== null) {
+  // ones exist, so the known names stay on offer without blocking Enter. Once
+  // the argument is an exact match the command is finished, so Enter sends.
+  if (
+    analysis.state === "complete" &&
+    analysis.arg !== null &&
+    analysis.form.arg?.kind !== "text"
+  ) {
     return argumentSuggestions(
       analysis.entry,
       analysis.form,
@@ -801,7 +808,9 @@ export function suggestCommands(
       context,
       analysis.tokenStart,
       analysis.tokenEnd,
-    ).slice(0, maximumSuggestions);
+    )
+      .filter((suggestion) => suggestion.insert !== analysis.arg)
+      .slice(0, maximumSuggestions);
   }
 
   return [];

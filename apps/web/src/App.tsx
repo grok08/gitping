@@ -22,6 +22,13 @@ import {
 import { commandRequestId } from "./lib/commands";
 import type { PendingCommand } from "./lib/commands";
 import { currentBranchName } from "./lib/branches";
+import {
+  pushCommandHistory,
+  readCommandHistory,
+  writeCommandHistory,
+} from "./lib/command-history";
+import type { HistoryStorage } from "./lib/command-history";
+import type { CommandContext } from "./lib/command-input";
 import { fromApiMessage, fromConfirmedMessage, mergeMessages } from "./lib/messages";
 import type {
   ApiBranch,
@@ -61,6 +68,18 @@ function stashNotice(input: string, count: number): string {
     : `${count} stashed ${count === 1 ? "message" : "messages"}`;
 }
 
+/**
+ * History lives in the browser only. A blocked or full storage is not an error,
+ * it just means this session has no history to recall.
+ */
+function browserStorage(): HistoryStorage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 function App() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState("");
@@ -72,6 +91,7 @@ function App() {
   const [branches, setBranches] = useState<ApiBranch[]>([]);
   const [error, setError] = useState("");
   const [input, setInput] = useState("");
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [connection, setConnection] = useState<ConnectionStatus>("connecting");
 
   /**
@@ -124,6 +144,31 @@ function App() {
   useEffect(() => {
     activeIdRef.current = activeId;
   }, [activeId]);
+
+  useEffect(() => {
+    const storage = browserStorage();
+
+    // oxlint-disable-next-line react/set-state-in-effect -- history is read from browser storage, an external store
+    setCommandHistory(
+      storage && activeId ? readCommandHistory(storage, activeId) : [],
+    );
+  }, [activeId]);
+
+  const commandContext = useMemo<CommandContext>(
+    () => ({
+      conversationName: active?.name ?? "",
+      conversationKind: active?.type ?? "channel",
+      branch,
+      branches: branches.map((item) => item.name),
+      messages: messages.map((message) => ({
+        id: message.id,
+        text: message.text,
+        stashed: message.stashed,
+        reverted: message.reverted,
+      })),
+    }),
+    [active?.name, active?.type, branch, branches, messages],
+  );
 
   /**
    * A preview is the newest message in the conversation, so it may only move
@@ -437,6 +482,22 @@ function App() {
     setBranchNotice(next);
   }
 
+  function recordCommand(value: string) {
+    const next = pushCommandHistory(commandHistory, value);
+
+    if (next === commandHistory) {
+      return;
+    }
+
+    setCommandHistory([...next]);
+
+    const storage = browserStorage();
+
+    if (storage && activeId) {
+      writeCommandHistory(storage, activeId, next);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -446,6 +507,7 @@ function App() {
       return;
     }
 
+    recordCommand(value);
     setError("");
 
     const previous =
@@ -637,9 +699,15 @@ function App() {
         searchInputRef={chatSearchRef}
         composerInputRef={composerRef}
         composerValue={input}
-        onComposerChange={setInput}
+        commandContext={commandContext}
+        commandHistory={commandHistory}
+        onComposerChange={(value) => {
+          setInput(value);
+          setError("");
+        }}
         onComposerSubmit={handleSubmit}
         onDismissError={() => setError("")}
+        onOpenCommandHelp={() => togglePanel("command-help", true)}
         onCopyCommand={(command) => void copyMessageCommand(command)}
         onToggleSidebar={toggleSidebar}
         onToggleBranchMenu={() => toggleMenu("branch")}

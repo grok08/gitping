@@ -13,6 +13,7 @@ export type ActivePanel =
   | "notifications"
   | "workspace-members"
   | "conversation-members"
+  | "command-help"
   | null;
 
 export type ModalKind = "channel" | "direct" | "settings" | null;

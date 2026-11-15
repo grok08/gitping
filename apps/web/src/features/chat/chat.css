@@ -391,14 +391,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 14px 0;
-  padding: 10px 12px;
+  margin: 8px 0 0;
+  padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
   border-radius: 7px;
   background: color-mix(in srgb, var(--danger) 8%, var(--panel));
   color: var(--danger);
   font-family: "IBM Plex Mono", monospace;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .command-error button {
@@ -424,6 +424,108 @@
 .composer-content {
   width: min(var(--focus-composer-width), calc(100% - 64px));
   margin-inline: auto;
+}
+
+.composer-field {
+  position: relative;
+}
+
+.composer-suggestions {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 264px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  list-style: none;
+}
+
+.composer-suggestion {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.composer-suggestion.is-highlighted {
+  background: var(--accent-soft);
+}
+
+.composer-suggestion-index {
+  width: 12px;
+  flex: 0 0 12px;
+  color: var(--text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9px;
+}
+
+.composer-suggestion-label {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  color: var(--text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-suggestion.is-highlighted .composer-suggestion-label {
+  color: var(--accent-hover);
+}
+
+.composer-suggestion-detail {
+  min-width: 0;
+  flex: 1;
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--text-subtle);
+  font-size: 10px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-suggestion-detail.is-current {
+  color: var(--accent);
+}
+
+.composer-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 2px 0;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.composer-hint-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-preview {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  white-space: nowrap;
 }
 
 .composer {
@@ -492,4 +594,95 @@
 .composer-help strong {
   color: var(--text-muted);
   font-weight: 600;
+}
+
+.composer-help-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.composer-help-button {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  flex: 0 0 18px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.composer-help-button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.command-help {
+  padding: 2px 4px 8px;
+}
+
+.command-help-intro {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.command-help-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.command-help-item {
+  padding: 9px;
+  border-radius: 7px;
+}
+
+.command-help-item:hover {
+  background: var(--panel-soft);
+}
+
+.command-help-syntax {
+  display: block;
+  color: var(--accent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.command-help-summary {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.command-help-example {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+
+.command-help-note {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--text-subtle);
+  font-size: 10px;
+  line-height: 1.6;
 }

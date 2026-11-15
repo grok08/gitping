@@ -5,10 +5,12 @@ import { MemberList } from "../members/MemberList";
 import { NotificationList } from "../members/NotificationList";
 import { ConversationSearch } from "../search/ConversationSearch";
 import type { ConnectionStatus } from "../../hooks/useConversationSocket";
+import type { CommandContext } from "../../lib/command-input";
 import type { Conversation } from "../../types/conversation";
 import type { Message } from "../../types/message";
 import type { ActiveMenu, ActivePanel, WorkspaceMember } from "../../types/workspace";
 import { ChatHeader } from "./ChatHeader";
+import { CommandHelp } from "./CommandHelp";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 
@@ -36,9 +38,12 @@ type ChatPageProps = {
   searchInputRef: RefObject<HTMLInputElement | null>;
   composerInputRef: RefObject<HTMLInputElement | null>;
   composerValue: string;
+  commandContext: CommandContext;
+  commandHistory: readonly string[];
   onComposerChange: (value: string) => void;
   onComposerSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDismissError: () => void;
+  onOpenCommandHelp: () => void;
   onCopyCommand: (command: string) => void;
   onToggleSidebar: () => void;
   onToggleBranchMenu: () => void;
@@ -80,9 +85,12 @@ export function ChatPage({
   searchInputRef,
   composerInputRef,
   composerValue,
+  commandContext,
+  commandHistory,
   onComposerChange,
   onComposerSubmit,
   onDismissError,
+  onOpenCommandHelp,
   onCopyCommand,
   onToggleSidebar,
   onToggleBranchMenu,
@@ -141,18 +149,34 @@ export function ChatPage({
         messages={messages}
         loading={loading}
         searching={searching}
-        error={error}
         listRef={messageListRef}
-        onDismissError={onDismissError}
         onCopyCommand={onCopyCommand}
       />
 
       <Composer
         value={composerValue}
         inputRef={composerInputRef}
+        context={commandContext}
+        history={commandHistory}
+        error={error}
         onChange={onComposerChange}
         onSubmit={onComposerSubmit}
+        onDismissError={onDismissError}
+        onOpenHelp={onOpenCommandHelp}
       />
+
+      {panel === "command-help" && (
+        <SidePanel
+          title="Command help"
+          subtitle="Git commands you can send"
+          closeLabel="Close command help"
+          closing={panelClosing}
+          onClose={onClosePanel}
+          onClosed={onPanelClosed}
+        >
+          <CommandHelp />
+        </SidePanel>
+      )}
 
       {panel === "notifications" && (
         <SidePanel

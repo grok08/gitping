@@ -1,4 +1,3 @@
-import { X } from "lucide-react";
 import type { RefObject } from "react";
 import type { Message } from "../../types/message";
 import { MessageItem } from "./MessageItem";
@@ -7,9 +6,7 @@ type MessageListProps = {
   messages: Message[];
   loading: boolean;
   searching: boolean;
-  error: string;
   listRef: RefObject<HTMLElement | null>;
-  onDismissError: () => void;
   onCopyCommand: (command: string) => void;
 };
 
@@ -17,9 +14,7 @@ export function MessageList({
   messages,
   loading,
   searching,
-  error,
   listRef,
-  onDismissError,
   onCopyCommand,
 }: MessageListProps) {
   return (
@@ -41,20 +36,6 @@ export function MessageList({
               onCopyCommand={onCopyCommand}
             />
           ))
-        )}
-
-        {error && (
-          <div className="command-error">
-            <span>{error}</span>
-
-            <button
-              type="button"
-              onClick={onDismissError}
-              aria-label="Dismiss error"
-            >
-              <X size={14} />
-            </button>
-          </div>
         )}
       </div>
     </section>
