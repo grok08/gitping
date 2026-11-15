@@ -72,6 +72,39 @@
   color: var(--text-subtle);
 }
 
+.connection-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.connection-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--text-subtle);
+}
+
+.connection-live .connection-dot {
+  background: var(--accent);
+}
+
+.connection-live .connection-label {
+  color: var(--accent);
+}
+
+.connection-offline {
+  color: var(--text-subtle);
+}
+
+.connection-offline .connection-dot {
+  background: var(--danger);
+}
+
 .chat-actions {
   position: relative;
   display: flex;

@@ -22,7 +22,7 @@ The goal is to make Git concepts useful for communication without making the app
 
 ## Current Status
 
-GitPing currently has a working end-to-end vertical slice, now backed by a Git-native domain model and persistent conversations:
+GitPing currently has a working end-to-end vertical slice, backed by a Git-native domain model, persistent conversations, and real-time delivery:
 
 ```text
 React
@@ -35,21 +35,24 @@ Hono
   ▼
 command-engine
   │
-  │ INSERT
+  │ INSERT (one transaction)
   ▼
 SQLite
   │
-  │ created message
-  ▼
-Hono response
+  ├──► HTTP 201 with the confirmed message
   │
-  ▼
-React conversation
+  └──► broadcast message.created
+          │
+          ▼
+     WebSocket /conversations/:id/events
+          │
+          ▼
+     every connected client in that conversation
 ```
 
 The current implementation is an early product foundation rather than a production-ready messaging service.
 
-The conversation list, member counts, last-message previews, branch lists, and per-conversation message history are read from SQLite. Creating a channel or direct message writes the conversation, its membership, and its `main` branch in one transaction.
+The conversation list, member counts, last-message previews, branch lists, and per-conversation message history are read from SQLite. Creating a channel or direct message writes the conversation, its membership, and its `main` branch in one transaction. A commit is persisted before it is broadcast, so a client never sees a message SQLite does not have.
 
 ---
 
@@ -85,6 +88,9 @@ The command parser lives in the `command-engine` workspace package.
 
 The frontend currently provides:
 
+- real-time delivery over one WebSocket per conversation
+- a connection indicator (`Live`, `Connecting`, `Reconnecting`, `Offline`)
+- reconnect catch-up from persisted history with no duplicates
 - channels and direct conversations loaded from the API
 - server-computed member counts and last-message previews
 - message history per conversation
@@ -118,9 +124,10 @@ gitping/
 │   │       ├── db.ts             # SQLite connection
 │   │       ├── migrations.ts     # versioned schema
 │   │       ├── seed.ts           # workspace seed data
-│   │       ├── routes/           # HTTP mapping only
+│   │       ├── routes/           # HTTP and WebSocket mapping only
 │   │       ├── services/         # business logic
 │   │       ├── repositories/     # SQL
+│   │       ├── realtime/         # connection hub, frames, WebSocket route
 │   │       └── types/
 │   │
 │   └── web/
@@ -128,8 +135,8 @@ gitping/
 │           ├── App.tsx           # composition root
 │           ├── features/         # chat, conversations, branch, search, members, workspace
 │           ├── components/ui/    # avatar, presence dot, side panel
-│           ├── hooks/            # theme, sidebar, shortcuts, transient messages
-│           ├── lib/              # API client and formatting
+│           ├── hooks/            # theme, sidebar, shortcuts, connection socket
+│           ├── lib/              # API client, message merge, realtime parsing, formatting
 │           ├── data/             # workspace members (local until Phase 8)
 │           ├── styles/           # tokens, globals, responsive, import order
 │           └── types/
@@ -178,7 +185,7 @@ Bun workspaces
 
 ## Message Flow
 
-A message currently follows this path:
+A message follows this path:
 
 ```text
 User types:
@@ -197,41 +204,38 @@ React composer
 Hono API
 
         │
-        ▼
-
-command-engine
-
+        ▲
+        │ command-engine validate
         │
-        │ validate
         ▼
 
 SQLite
 
         │
-        │ INSERT
+        │ INSERT message + command + event, move branch head
+        │ inside one transaction
         ▼
 
-created message
+committed row
 
         │
-        ▼
-
-Hono response
-
+        ├──────────────► HTTP 201 { message }
+        │                        │
+        │                        ▼
+        │                sender merges the confirmed message
         │
-        ▼
-
-React state
-
-        │
-        ▼
-
-message appears in conversation
+        └──────────────► broadcast message.created
+                                 │
+                                 ▼
+                    every WebSocket client in that conversation
+                                 │
+                                 ▼
+                    merge by id + order by seq, render once
 ```
 
-SQLite is the persistence source of truth.
+SQLite is the persistence source of truth. A message is broadcast only after its transaction commits.
 
-The frontend should only treat a message as persisted after the backend successfully creates it.
+The browser renders only confirmed messages. There is no optimistic copy to reconcile: the broadcast is the primary path, the HTTP response is the fallback when the socket is down, and both carry the same server id, so the same commit can never appear twice.
 
 ---
 
@@ -310,7 +314,7 @@ A duplicate or invalid body returns `400` with `{ "error": "..." }`.
 GET /conversations/:id/messages
 ```
 
-Returns the conversation's messages ordered by `seq`, in the same shape as `GET /messages`.
+Returns the conversation's messages ordered by `seq`, in the same shape as `GET /messages`, including `seq`.
 
 ```http
 POST /conversations/:id/commands
@@ -362,6 +366,7 @@ Returns persisted messages ordered by commit order. Each message is joined with 
 ```json
 [
   {
+    "seq": 1,
     "id": "...",
     "author": "grok08",
     "text": "hello from GitPing",
@@ -370,6 +375,8 @@ Returns persisted messages ordered by commit order. Each message is joined with 
   }
 ]
 ```
+
+`seq` is the conversation-independent commit order. It is the ordering key clients use for realtime events.
 
 `GET /messages` returns every conversation's messages and remains for compatibility and simple scripts. The browser reads `GET /conversations/:id/messages` instead.
 
@@ -395,6 +402,7 @@ Request:
 ```json
 {
   "message": {
+    "seq": 2,
     "id": "...",
     "author": "grok08",
     "text": "hello from GitPing",
@@ -403,6 +411,60 @@ Request:
   }
 }
 ```
+
+The id is generated by the server. A client never invents the id of a confirmed message.
+
+### Real-time events
+
+```http
+GET /conversations/:id/events
+```
+
+This is a WebSocket upgrade scoped to one conversation. An unknown conversation is rejected with `404 {"error":"Unknown conversation: ..."}` before the upgrade.
+
+Server frames:
+
+```json
+{ "type": "ready", "conversationId": "conv-engineering" }
+```
+
+```json
+{
+  "type": "message.created",
+  "conversationId": "conv-engineering",
+  "seq": 3,
+  "message": {
+    "seq": 3,
+    "id": "0ad68472-56c9-4da6-92ac-6c255d5fa337",
+    "author": "grok08",
+    "text": "hello from GitPing",
+    "command": "git commit",
+    "createdAt": "2026-11-15T12:48:50.664Z"
+  }
+}
+```
+
+```json
+{ "type": "pong" }
+{ "type": "error", "error": "Malformed frame: expected JSON" }
+```
+
+Client frames are limited to a keepalive:
+
+```json
+{ "type": "ping" }
+```
+
+Rules the server and client rely on:
+
+- The event is sent only after the message transaction commits. A rolled-back write is never broadcast.
+- Both `POST /conversations/:id/commands` and `POST /commands` broadcast.
+- The event goes only to clients subscribed to that conversation.
+- `seq` is the ordering key; a client sorts by it and de-duplicates by message id.
+- The client renders confirmed messages only, so it never shows a pending copy next to the real one.
+- On reconnect the client refetches `GET /conversations/:id/messages` and merges it, which closes gaps without duplicates.
+
+The implementation uses Hono's Bun WebSocket adapter: the route upgrades through `upgradeWebSocket`, `Bun.serve` receives the paired `websocket` handler, and `apps/api/src/realtime/hub.ts` holds the per-conversation registry.
 
 ---
 
@@ -444,6 +506,8 @@ A message is a human-visible line plus the Git command that produced it. The par
 On first run the API creates the schema, seeds four users, six conversations, and eight branches, and backfills any rows from the pre-migration `messages` table into `engineering` on `main`. A conversation created later adds its membership and `main` branch inside one transaction, so a conversation never exists without a branch.
 
 Phase 3 needed no schema change. `PRAGMA user_version` stays at 1.
+
+Phase 4 needed no schema change either. Ordering uses the existing `messages.seq`, and `message_events` already records the `created` event per message, so `PRAGMA user_version` is still 1.
 
 Inspect a database file:
 
@@ -570,7 +634,7 @@ Branches, commits and other Git concepts should become meaningful conversation p
 
 ### Server-authoritative persistence
 
-A message is not considered persisted until SQLite confirms the write through the API.
+A message is not considered persisted until SQLite confirms the write through the API. The browser renders only confirmed messages and merges them by server id, so realtime delivery can never invent or duplicate one.
 
 ### Small vertical slices
 

@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 export const apiUrl = "http://localhost:3000";
 
 type MockMessage = {
+  seq: number;
   id: string;
   author: string;
   text: string;
@@ -48,6 +49,7 @@ const users: MockMember[] = [
 
 function createState(): MockState {
   const seedMessage: MockMessage = {
+    seq: 1,
     id: "playwright-seed",
     author: "rahul",
     text: "Ready to ship?",
@@ -123,6 +125,54 @@ export async function openApp(
   if (viewport) {
     await page.setViewportSize(viewport);
   }
+
+  // These tests mock HTTP and have no real API process behind them, so the
+  // realtime socket is replaced with an already-open stub. The badge stays
+  // "Live" deterministically, and the socket never touches the network.
+  // Real delivery is covered by tests/e2e/realtime.spec.ts against the real API.
+  await page.addInitScript(() => {
+    class StubWebSocket extends EventTarget {
+      static readonly CONNECTING = 0;
+      static readonly OPEN = 1;
+      static readonly CLOSING = 2;
+      static readonly CLOSED = 3;
+
+      readyState = 1;
+      readonly url: string;
+
+      constructor(url: string | URL) {
+        super();
+        this.url = String(url);
+
+        window.setTimeout(() => {
+          if (this.readyState !== 1) {
+            return;
+          }
+
+          this.dispatchEvent(new Event("open"));
+          this.dispatchEvent(
+            new MessageEvent("message", {
+              data: JSON.stringify({ type: "ready", conversationId: "mock" }),
+            }),
+          );
+        }, 0);
+      }
+
+      send() {
+        // The mocked UI has no server to talk to.
+      }
+
+      close() {
+        this.readyState = 3;
+        this.dispatchEvent(new CloseEvent("close"));
+      }
+    }
+
+    Object.defineProperty(window, "WebSocket", {
+      configurable: true,
+      value: StubWebSocket,
+    });
+  });
 
   await page.route(`${apiUrl}/**`, async (route) => {
     const request = route.request();
@@ -245,7 +295,9 @@ export async function openApp(
       }
 
       const text = parseCommitText(input);
+      const messages = state.messages.get(conversationId) ?? [];
       const message: MockMessage = {
+        seq: messages.length + 1,
         id: `playwright-${submittedCommands.length + 1}`,
         author: "grok08",
         text,
@@ -254,7 +306,8 @@ export async function openApp(
       };
 
       submittedCommands.push(input);
-      state.messages.get(conversationId)?.push(message);
+      messages.push(message);
+      state.messages.set(conversationId, messages);
       conversation.preview = text;
       branch.headMessageId = message.id;
 

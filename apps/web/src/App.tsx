@@ -5,6 +5,8 @@ import { ConversationSidebar } from "./features/conversations/ConversationSideba
 import { IconRail } from "./features/workspace/IconRail";
 import { WorkspaceModal } from "./features/workspace/WorkspaceModal";
 import { workspaceMembers } from "./data/seed";
+import { useConversationSocket } from "./hooks/useConversationSocket";
+import type { ConnectionStatus } from "./hooks/useConversationSocket";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useSidebar } from "./hooks/useSidebar";
 import { useTheme } from "./hooks/useTheme";
@@ -17,7 +19,7 @@ import {
   getConversations,
   sendConversationCommand,
 } from "./lib/api";
-import { formatTime } from "./lib/format";
+import { fromApiMessage, fromConfirmedMessage, mergeMessages } from "./lib/messages";
 import type {
   ApiBranch,
   ApiConversation,
@@ -46,24 +48,6 @@ function toWorkspaceMember(member: ApiMember): WorkspaceMember {
   };
 }
 
-function buildMessage(
-  id: string,
-  author: string,
-  text: string,
-  command: string,
-  createdAt: string,
-): Message {
-  return {
-    id,
-    author,
-    avatar: author.charAt(0).toUpperCase(),
-    text,
-    command: `${command} -m "${text}"`,
-    time: formatTime(createdAt),
-    mine: author === "grok08",
-  };
-}
-
 function App() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState("");
@@ -75,6 +59,7 @@ function App() {
   const [branches, setBranches] = useState<ApiBranch[]>([]);
   const [error, setError] = useState("");
   const [input, setInput] = useState("");
+  const [connection, setConnection] = useState<ConnectionStatus>("connecting");
 
   const [globalSearch, setGlobalSearch] = useState("");
   const [chatSearch, setChatSearch] = useState("");
@@ -109,6 +94,77 @@ function App() {
   );
 
   const activeId = active?.id ?? "";
+  const activeIdRef = useRef(activeId);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  /**
+   * Catch-up path. On every socket open, including a reconnect, the client
+   * refetches persisted history and merges it. SQLite is the source of truth,
+   * so nothing that was committed during an outage can be missed, and the
+   * merge collapses anything the client already had.
+   */
+  async function refreshMessages(conversationId: string) {
+    try {
+      const data = await getConversationMessages(conversationId);
+
+      if (activeIdRef.current !== conversationId) {
+        return;
+      }
+
+      setMessages((current) =>
+        mergeMessages(current, data.map(fromApiMessage)),
+      );
+
+      // The sidebar preview normally advances on a broadcast. A client that
+      // missed events while offline has to catch that up too.
+      const latest = data[data.length - 1];
+
+      if (latest) {
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === conversationId &&
+            conversation.preview !== latest.text
+              ? { ...conversation, preview: latest.text }
+              : conversation,
+          ),
+        );
+      }
+    } catch {
+      // The next reconnect retries. Sending still works over HTTP meanwhile.
+      return;
+    }
+  }
+
+  useConversationSocket({
+    conversationId: activeId,
+
+    onStatusChange: setConnection,
+
+    onCatchUp(conversationId) {
+      void refreshMessages(conversationId);
+    },
+
+    onMessage(message, conversationId) {
+      if (activeIdRef.current !== conversationId) {
+        return;
+      }
+
+      const confirmed = fromConfirmedMessage(message);
+
+      setMessages((current) => mergeMessages(current, [confirmed]));
+
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? { ...conversation, preview: confirmed.text }
+            : conversation,
+        ),
+      );
+    },
+  });
 
   const filteredMessages = useMemo(() => {
     const query = chatSearch.trim().toLowerCase();
@@ -221,16 +277,8 @@ function App() {
           return;
         }
 
-        setMessages(
-          messageData.map((message) =>
-            buildMessage(
-              message.id,
-              message.author,
-              message.text,
-              message.command,
-              message.created_at,
-            ),
-          ),
+        setMessages((current) =>
+          mergeMessages(current, messageData.map(fromApiMessage)),
         );
 
         setBranches(branchData);
@@ -376,22 +424,14 @@ function App() {
 
     try {
       const message = await sendConversationCommand(activeId, value, branch);
+      const confirmed = fromConfirmedMessage(message);
 
-      setMessages((current) => [
-        ...current,
-        buildMessage(
-          message.id,
-          message.author,
-          message.text,
-          message.command,
-          message.createdAt,
-        ),
-      ]);
+      setMessages((current) => mergeMessages(current, [confirmed]));
 
       setConversations((current) =>
         current.map((conversation) =>
           conversation.id === activeId
-            ? { ...conversation, preview: message.text }
+            ? { ...conversation, preview: confirmed.text }
             : conversation,
         ),
       );
@@ -399,7 +439,7 @@ function App() {
       setBranches((current) =>
         current.map((item) =>
           item.name === branch
-            ? { ...item, headMessageId: message.id }
+            ? { ...item, headMessageId: confirmed.id }
             : item,
         ),
       );
@@ -532,6 +572,7 @@ function App() {
         sidebarOpen={sidebarOpen}
         branch={branch}
         branches={branches.map((item) => item.name)}
+        connection={connection}
         activeMenu={activeMenu}
         searchOpen={chatSearchOpen}
         searchQuery={chatSearch}

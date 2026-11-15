@@ -1,0 +1,296 @@
+[WebServer] $ vite --host "127.0.0.1" --port "4173" --strictPort
+
+Running 8 tests using 8 workers
+
+  ok 3 [chromium] › tests\e2e\visual.spec.ts:76:1 › mobile drawer open (2.4s)
+  ok 7 [chromium] › tests\e2e\visual.spec.ts:84:1 › branch switch notice (2.4s)
+  ok 2 [chromium] › tests\e2e\visual.spec.ts:57:1 › settings modal (2.8s)
+  x  1 [chromium] › tests\e2e\visual.spec.ts:24:1 › desktop light conversation (3.0s)
+  x  4 [chromium] › tests\e2e\visual.spec.ts:31:1 › desktop dark conversation (3.3s)
+  x  5 [chromium] › tests\e2e\visual.spec.ts:39:1 › collapsed conversation sidebar (3.2s)
+  x  8 [chromium] › tests\e2e\visual.spec.ts:49:1 › workspace members panel (3.5s)
+  x  6 [chromium] › tests\e2e\visual.spec.ts:65:1 › conversation search with results (3.4s)
+
+
+  1) [chromium] › tests\e2e\visual.spec.ts:24:1 › desktop light conversation ───────────────────────
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      51 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: desktop-light.png
+
+    Call log:
+      - Expect "toHaveScreenshot(desktop-light.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 51 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 51 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      19 |   }
+      20 |
+    > 21 |   await expect(page).toHaveScreenshot(`${name}.png`);
+         |                      ^
+      22 | }
+      23 |
+      24 | test("desktop light conversation", async ({ page }) => {
+        at capture (C:\Users\Umesh Chandra\pet-peeves\gitping\apps\web\tests\e2e\visual.spec.ts:21:22)
+        at C:\Users\Umesh Chandra\pet-peeves\gitping\apps\web\tests\e2e\visual.spec.ts:28:9
+
+    attachment #1: desktop-light (image/png) ───────────────────────────────────────────────────────
+    Expected: ..\..\evidence\phase-1\parity\desktop-light.png
+    Received: test-results\visual-desktop-light-conversation-chromium\desktop-light-actual.png
+    Diff:     test-results\visual-desktop-light-conversation-chromium\desktop-light-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\visual-desktop-light-conversation-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\visual-desktop-light-conversation-chromium\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\visual-desktop-light-conversation-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\visual-desktop-light-conversation-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests\e2e\visual.spec.ts:31:1 › desktop dark conversation ────────────────────────
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      52 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: desktop-dark.png
+
+    Call log:
+      - Expect "toHaveScreenshot(desktop-dark.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 52 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 52 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      19 |   }
+      20 |
+    > 21 |   await expect(page).toHaveScreenshot(`${name}.png`);
+         |                      ^
+      22 | }
+      23 |
+      24 | test("desktop light conversation", async ({ page }) => {
+        at capture (C:\Users\Umesh Chandra\pet-peeves\gitping\apps\web\tests\e2e\visual.spec.ts:21:22)
+        at C:\Users\Umesh Chandra\pet-peeves\gitping\apps\web\tests\e2e\visual.spec.ts:36:9
+
+    attachment #1: desktop-dark (image/png) ────────────────────────────────────────────────────────
+    Expected: ..\..\evidence\phase-1\parity\desktop-dark.png
+    Received: test-results\visual-desktop-dark-conversation-chromium\desktop-dark-actual.png
+    Diff:     test-results\visual-desktop-dark-conversation-chromium\desktop-dark-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\visual-desktop-dark-conversation-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\visual-desktop-dark-conversation-chromium\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\visual-desktop-dark-conversation-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\visual-desktop-dark-conversation-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests\e2e\visual.spec.ts:39:1 › collapsed conversation sidebar ───────────────────
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      51 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: sidebar-collapsed.png
+
+    Call log:
+      - Expect "toHaveScreenshot(sidebar-collapsed.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 51 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 51 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      19 |   }
+      20 |
+    > 21 |   await expect(page).toHaveScreenshot(`${name}.png`);
+         |                      ^
+      22 | }
+      23 |
+      24 | test("desktop light conversation", async ({ page }) => {
+        at capture (C:\Users\Umesh Chandra\pet-peeves\gitping\apps\web\tests\e2e\visual.spec.ts:21:22)
+        at C:\Users\Umesh Chandra\pet-peeves\gitping\apps\web\tests\e2e\visual.spec.ts:46:9
+
+    attachment #1: sidebar-collapsed (image/png) ───────────────────────────────────────────────────
+    Expected: ..\..\evidence\phase-1\parity\sidebar-collapsed.png
+    Received: test-results\visual-collapsed-conversation-sidebar-chromium\sidebar-collapsed-actual.png
+    Diff:     test-results\visual-collapsed-conversation-sidebar-chromium\sidebar-collapsed-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\visual-collapsed-conversation-sidebar-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\visual-collapsed-conversation-sidebar-chromium\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\visual-collapsed-conversation-sidebar-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\visual-collapsed-conversation-sidebar-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › tests\e2e\visual.spec.ts:49:1 › workspace members panel ──────────────────────────
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      51 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: workspace-members-panel.png
+
+    Call log:
+      - Expect "toHaveScreenshot(workspace-members-panel.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 51 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 51 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      19 |   }
+      20 |
+    > 21 |   await expect(page).toHaveScreenshot(`${name}.png`);
+         |                      ^
+      22 | }
+      23 |
+      24 | test("desktop light conversation", async ({ page }) => {
+        at capture (C:\Users\Umesh Chandra\pet-peeves\gitping\apps\web\tests\e2e\visual.spec.ts:21:22)
+        at C:\Users\Umesh Chandra\pet-peeves\gitping\apps\web\tests\e2e\visual.spec.ts:54:9
+
+    attachment #1: workspace-members-panel (image/png) ─────────────────────────────────────────────
+    Expected: ..\..\evidence\phase-1\parity\workspace-members-panel.png
+    Received: test-results\visual-workspace-members-panel-chromium\workspace-members-panel-actual.png
+    Diff:     test-results\visual-workspace-members-panel-chromium\workspace-members-panel-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\visual-workspace-members-panel-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\visual-workspace-members-panel-chromium\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\visual-workspace-members-panel-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\visual-workspace-members-panel-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › tests\e2e\visual.spec.ts:65:1 › conversation search with results ─────────────────
+
+    Error: expect(page).toHaveScreenshot(expected) failed
+
+      51 pixels (ratio 0.01 of all image pixels) are different.
+
+      Snapshot: conversation-search.png
+
+    Call log:
+      - Expect "toHaveScreenshot(conversation-search.png)" with timeout 5000ms
+        - verifying given screenshot expectation
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - 51 pixels (ratio 0.01 of all image pixels) are different.
+      - waiting 100ms before taking screenshot
+      - taking page screenshot
+        - disabled all CSS animations
+      - waiting for fonts to load...
+      - fonts loaded
+      - captured a stable screenshot
+      - 51 pixels (ratio 0.01 of all image pixels) are different.
+
+
+      19 |   }
+      20 |
+    > 21 |   await expect(page).toHaveScreenshot(`${name}.png`);
+         |                      ^
+      22 | }
+      23 |
+      24 | test("desktop light conversation", async ({ page }) => {
+        at capture (C:\Users\Umesh Chandra\pet-peeves\gitping\apps\web\tests\e2e\visual.spec.ts:21:22)
+        at C:\Users\Umesh Chandra\pet-peeves\gitping\apps\web\tests\e2e\visual.spec.ts:73:9
+
+    attachment #1: conversation-search (image/png) ─────────────────────────────────────────────────
+    Expected: ..\..\evidence\phase-1\parity\conversation-search.png
+    Received: test-results\visual-conversation-search-with-results-chromium\conversation-search-actual.png
+    Diff:     test-results\visual-conversation-search-with-results-chromium\conversation-search-diff.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\visual-conversation-search-with-results-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\visual-conversation-search-with-results-chromium\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\visual-conversation-search-with-results-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\visual-conversation-search-with-results-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5 failed
+    [chromium] › tests\e2e\visual.spec.ts:24:1 › desktop light conversation ────────────────────────
+    [chromium] › tests\e2e\visual.spec.ts:31:1 › desktop dark conversation ─────────────────────────
+    [chromium] › tests\e2e\visual.spec.ts:39:1 › collapsed conversation sidebar ────────────────────
+    [chromium] › tests\e2e\visual.spec.ts:49:1 › workspace members panel ───────────────────────────
+    [chromium] › tests\e2e\visual.spec.ts:65:1 › conversation search with results ──────────────────
+  3 passed (6.1s)

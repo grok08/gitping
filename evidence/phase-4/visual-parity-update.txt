@@ -1,0 +1,19 @@
+[WebServer] $ vite --host "127.0.0.1" --port "4173" --strictPort
+
+Running 8 tests using 8 workers
+
+  ok 6 [chromium] › tests\e2e\visual.spec.ts:76:1 › mobile drawer open (2.0s)
+  ok 2 [chromium] › tests\e2e\visual.spec.ts:84:1 › branch switch notice (2.2s)
+  ok 5 [chromium] › tests\e2e\visual.spec.ts:57:1 › settings modal (2.4s)
+C:\Users\Umesh Chandra\pet-peeves\gitping\evidence\phase-1\parity\desktop-dark.png is re-generated, writing actual.
+C:\Users\Umesh Chandra\pet-peeves\gitping\evidence\phase-1\parity\conversation-search.png is re-generated, writing actual.
+C:\Users\Umesh Chandra\pet-peeves\gitping\evidence\phase-1\parity\workspace-members-panel.png is re-generated, writing actual.
+C:\Users\Umesh Chandra\pet-peeves\gitping\evidence\phase-1\parity\desktop-light.png is re-generated, writing actual.
+  ok 8 [chromium] › tests\e2e\visual.spec.ts:65:1 › conversation search with results (3.0s)
+  ok 1 [chromium] › tests\e2e\visual.spec.ts:31:1 › desktop dark conversation (3.1s)
+C:\Users\Umesh Chandra\pet-peeves\gitping\evidence\phase-1\parity\sidebar-collapsed.png is re-generated, writing actual.
+  ok 4 [chromium] › tests\e2e\visual.spec.ts:49:1 › workspace members panel (3.1s)
+  ok 7 [chromium] › tests\e2e\visual.spec.ts:24:1 › desktop light conversation (3.0s)
+  ok 3 [chromium] › tests\e2e\visual.spec.ts:39:1 › collapsed conversation sidebar (3.2s)
+
+  8 passed (5.2s)

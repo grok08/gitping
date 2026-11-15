@@ -4,6 +4,7 @@ import { BranchNotification } from "../branch/BranchNotification";
 import { MemberList } from "../members/MemberList";
 import { NotificationList } from "../members/NotificationList";
 import { ConversationSearch } from "../search/ConversationSearch";
+import type { ConnectionStatus } from "../../hooks/useConversationSocket";
 import type { Conversation } from "../../types/conversation";
 import type { Message } from "../../types/message";
 import type { ActiveMenu, ActivePanel, WorkspaceMember } from "../../types/workspace";
@@ -22,6 +23,7 @@ type ChatPageProps = {
   sidebarOpen: boolean;
   branch: string;
   branches: string[];
+  connection: ConnectionStatus;
   activeMenu: ActiveMenu;
   searchOpen: boolean;
   searchQuery: string;
@@ -64,6 +66,7 @@ export function ChatPage({
   sidebarOpen,
   branch,
   branches,
+  connection,
   activeMenu,
   searchOpen,
   searchQuery,
@@ -103,6 +106,7 @@ export function ChatPage({
         sidebarOpen={sidebarOpen}
         branch={branch}
         branches={branches}
+        connection={connection}
         activeMenu={activeMenu}
         onToggleSidebar={onToggleSidebar}
         onToggleBranchMenu={onToggleBranchMenu}

@@ -1,14 +1,17 @@
 import { Bell, Copy, Hash, Menu, Search, Settings, Users } from "lucide-react";
 import { useState } from "react";
 import { BranchSelector } from "../branch/BranchSelector";
+import type { ConnectionStatus } from "../../hooks/useConversationSocket";
 import type { Conversation } from "../../types/conversation";
 import type { ActiveMenu } from "../../types/workspace";
+import { ConnectionBadge } from "./ConnectionBadge";
 
 type ChatHeaderProps = {
   conversation: Conversation | undefined;
   sidebarOpen: boolean;
   branch: string;
   branches: string[];
+  connection: ConnectionStatus;
   activeMenu: ActiveMenu;
   onToggleSidebar: () => void;
   onToggleBranchMenu: () => void;
@@ -27,6 +30,7 @@ export function ChatHeader({
   sidebarOpen,
   branch,
   branches,
+  connection,
   activeMenu,
   onToggleSidebar,
   onToggleBranchMenu,
@@ -76,6 +80,10 @@ export function ChatHeader({
               onToggle={onToggleBranchMenu}
               onSelect={onSelectBranch}
             />
+
+            <span className="meta-dot">•</span>
+
+            <ConnectionBadge status={connection} />
           </div>
         </div>
       </div>

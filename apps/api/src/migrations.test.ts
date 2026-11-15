@@ -101,6 +101,7 @@ describe("migrations", () => {
 
     expect(messages).toEqual([
       {
+        seq: 1,
         id: "legacy-1",
         author: "grok08",
         text: "first legacy message",
@@ -108,6 +109,7 @@ describe("migrations", () => {
         created_at: "2026-01-01T10:00:00.000Z",
       },
       {
+        seq: 2,
         id: "legacy-2",
         author: "legacyuser",
         text: "second legacy message",

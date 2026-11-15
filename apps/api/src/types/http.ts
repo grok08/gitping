@@ -1,6 +1,7 @@
 import type { ConversationKind, UserRole } from "./domain";
 
 export type MessageRow = {
+  seq: number;
   id: string;
   author: string;
   text: string;
@@ -9,6 +10,7 @@ export type MessageRow = {
 };
 
 export type MessageRecord = {
+  seq: number;
   id: string;
   author: string;
   text: string;

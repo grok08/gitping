@@ -4,6 +4,7 @@ import type { MessageRow } from "../types/http";
 
 const selectMessage = `
   SELECT
+    m.seq,
     m.id,
     u.handle AS author,
     m.text,

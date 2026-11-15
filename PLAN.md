@@ -49,7 +49,8 @@ The next work should move from "single local vertical slice" to "real multi-user
 | 1. Stabilize the foundation | Complete | `evidence/phase-1/README.md` |
 | 2. Model GitPing properly | Complete | `evidence/phase-2/README.md` |
 | 3. Real conversation persistence | Complete | `evidence/phase-3/README.md` |
-| 4 through 12 | Not started | |
+| 4. Real-time messaging | Complete | `evidence/phase-4/README.md` |
+| 5 through 12 | Not started | |
 
 ---
 
@@ -282,6 +283,12 @@ Requirements:
 - server-authoritative message IDs
 
 Do this only after the HTTP persistence model is stable.
+
+## Phase 4 result
+
+Complete. `GET /conversations/:id/events` upgrades to a WebSocket scoped to one conversation. A commit is written inside its transaction and broadcast only after it commits, from both `POST /conversations/:id/commands` and the compatibility `POST /commands`. The browser keeps SQLite as the source of truth: no optimistic message is rendered, broadcasts and HTTP responses merge by server id, order comes from `messages.seq`, and every reconnect refetches persisted history and merges it. The chat header shows `Live`, `Connecting`, `Reconnecting`, or `Offline`, with bounded exponential backoff.
+
+No schema change was needed. `messages.seq` and `message_events` already covered ordering and the event hook, so `PRAGMA user_version` stays at 1. Evidence, including the deliberate visual parity update, is in `evidence/phase-4/README.md`.
 
 ---
 

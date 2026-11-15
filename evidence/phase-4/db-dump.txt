@@ -1,0 +1,471 @@
+$ bun run apps/api/scripts/inspect-db.ts "apps/web/test-results/gitping-e2e.db"
+database: apps/web/test-results/gitping-e2e.db
+schema version: 1
+
+## row counts
+branches: 11
+conversation_members: 24
+conversations: 9
+git_commands: 9
+message_events: 9
+messages: 9
+users: 4
+
+## users
+[
+  {
+    "handle": "alice",
+    "display_name": "alice",
+    "role": "developer"
+  },
+  {
+    "handle": "grok08",
+    "display_name": "grok08",
+    "role": "owner"
+  },
+  {
+    "handle": "maria",
+    "display_name": "maria",
+    "role": "developer"
+  },
+  {
+    "handle": "rahul",
+    "display_name": "rahul",
+    "role": "developer"
+  }
+]
+
+## conversations
+[
+  {
+    "id": "conv-engineering",
+    "name": "engineering",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-general",
+    "name": "general",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-four-order-mwhu3big",
+    "name": "phase-four-order-mwhu3big",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-three-mwhu38qz",
+    "name": "phase-three-mwhu38qz",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-random",
+    "name": "random",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-weekend",
+    "name": "weekend",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-alice",
+    "name": "alice",
+    "kind": "direct"
+  },
+  {
+    "id": "conv-direct-maria",
+    "name": "maria",
+    "kind": "direct"
+  },
+  {
+    "id": "conv-rahul",
+    "name": "rahul",
+    "kind": "direct"
+  }
+]
+
+## conversation members
+[
+  {
+    "conversation": "alice",
+    "member": "alice",
+    "role": "developer"
+  },
+  {
+    "conversation": "alice",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "engineering",
+    "member": "alice",
+    "role": "developer"
+  },
+  {
+    "conversation": "engineering",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "engineering",
+    "member": "maria",
+    "role": "developer"
+  },
+  {
+    "conversation": "engineering",
+    "member": "rahul",
+    "role": "developer"
+  },
+  {
+    "conversation": "general",
+    "member": "alice",
+    "role": "developer"
+  },
+  {
+    "conversation": "general",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "general",
+    "member": "maria",
+    "role": "developer"
+  },
+  {
+    "conversation": "general",
+    "member": "rahul",
+    "role": "developer"
+  },
+  {
+    "conversation": "maria",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "maria",
+    "member": "maria",
+    "role": "developer"
+  },
+  {
+    "conversation": "phase-four-order-mwhu3big",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "phase-three-mwhu38qz",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "rahul",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "rahul",
+    "member": "rahul",
+    "role": "developer"
+  },
+  {
+    "conversation": "random",
+    "member": "alice",
+    "role": "developer"
+  },
+  {
+    "conversation": "random",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "random",
+    "member": "maria",
+    "role": "developer"
+  },
+  {
+    "conversation": "random",
+    "member": "rahul",
+    "role": "developer"
+  },
+  {
+    "conversation": "weekend",
+    "member": "alice",
+    "role": "developer"
+  },
+  {
+    "conversation": "weekend",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "weekend",
+    "member": "maria",
+    "role": "developer"
+  },
+  {
+    "conversation": "weekend",
+    "member": "rahul",
+    "role": "developer"
+  }
+]
+
+## branches
+[
+  {
+    "id": "branch-conv-alice-main",
+    "conversation": "alice",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-engineering-feature-ui",
+    "conversation": "engineering",
+    "branch": "feature-ui",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-engineering-main",
+    "conversation": "engineering",
+    "branch": "main",
+    "head": "f2103a6a"
+  },
+  {
+    "id": "branch-conv-engineering-weekend",
+    "conversation": "engineering",
+    "branch": "weekend",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-general-main",
+    "conversation": "general",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-direct-maria-main",
+    "conversation": "maria",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-channel-phase-four-order-mwhu3big-main",
+    "conversation": "phase-four-order-mwhu3big",
+    "branch": "main",
+    "head": "4f5bfbf6"
+  },
+  {
+    "id": "branch-conv-channel-phase-three-mwhu38qz-main",
+    "conversation": "phase-three-mwhu38qz",
+    "branch": "main",
+    "head": "71270b33"
+  },
+  {
+    "id": "branch-conv-rahul-main",
+    "conversation": "rahul",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-random-main",
+    "conversation": "random",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-weekend-main",
+    "conversation": "weekend",
+    "branch": "main",
+    "head": "-"
+  }
+]
+
+## messages
+[
+  {
+    "seq": 1,
+    "id": "e701b95c-3532-4a4b-ac47-93c73c222f90",
+    "author": "grok08",
+    "conversation": "engineering",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase three persists 1794747109426",
+    "created_at": "2026-11-15T12:51:51.809Z"
+  },
+  {
+    "seq": 2,
+    "id": "dab3242d-092d-4fd9-aded-3603b81eedf7",
+    "author": "grok08",
+    "conversation": "engineering",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four live mwhu3b0a",
+    "created_at": "2026-11-15T12:51:52.840Z"
+  },
+  {
+    "seq": 3,
+    "id": "71270b33-1c9e-4c8b-a202-a151c0e74acf",
+    "author": "grok08",
+    "conversation": "phase-three-mwhu38qz",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase three persists mwhu38qz",
+    "created_at": "2026-11-15T12:51:52.893Z"
+  },
+  {
+    "seq": 4,
+    "id": "f2103a6a-12d9-4243-a53a-e37fc0f0ab76",
+    "author": "grok08",
+    "conversation": "engineering",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four reconnect mwhu3e6i",
+    "created_at": "2026-11-15T12:51:56.998Z"
+  },
+  {
+    "seq": 5,
+    "id": "4b708e4e-a826-44df-a1c2-ccb86e735193",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhu3big",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhu3big 1",
+    "created_at": "2026-11-15T12:51:57.462Z"
+  },
+  {
+    "seq": 6,
+    "id": "47012dd9-e6b9-4414-a2ba-468849d4a966",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhu3big",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhu3big 2",
+    "created_at": "2026-11-15T12:51:57.573Z"
+  },
+  {
+    "seq": 7,
+    "id": "560cda02-1e76-45d2-8d1d-e3d1b7523abd",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhu3big",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhu3big 3",
+    "created_at": "2026-11-15T12:51:57.688Z"
+  },
+  {
+    "seq": 8,
+    "id": "135326ce-dd82-4aec-8a7d-651dff3212f9",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhu3big",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhu3big 4",
+    "created_at": "2026-11-15T12:51:57.804Z"
+  },
+  {
+    "seq": 9,
+    "id": "4f5bfbf6-162c-4f50-9400-562ce3dbbcb9",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhu3big",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhu3big 5",
+    "created_at": "2026-11-15T12:51:57.917Z"
+  }
+]
+
+## git commands
+[
+  {
+    "message_id": "dab3242d-092d-4fd9-aded-3603b81eedf7",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four live mwhu3b0a\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four live mwhu3b0a\",\"amend\":false}"
+  },
+  {
+    "message_id": "4b708e4e-a826-44df-a1c2-ccb86e735193",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four order mwhu3big 1\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhu3big 1\",\"amend\":false}"
+  },
+  {
+    "message_id": "47012dd9-e6b9-4414-a2ba-468849d4a966",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four order mwhu3big 2\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhu3big 2\",\"amend\":false}"
+  },
+  {
+    "message_id": "560cda02-1e76-45d2-8d1d-e3d1b7523abd",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four order mwhu3big 3\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhu3big 3\",\"amend\":false}"
+  },
+  {
+    "message_id": "135326ce-dd82-4aec-8a7d-651dff3212f9",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four order mwhu3big 4\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhu3big 4\",\"amend\":false}"
+  },
+  {
+    "message_id": "4f5bfbf6-162c-4f50-9400-562ce3dbbcb9",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four order mwhu3big 5\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhu3big 5\",\"amend\":false}"
+  },
+  {
+    "message_id": "f2103a6a-12d9-4243-a53a-e37fc0f0ab76",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four reconnect mwhu3e6i\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four reconnect mwhu3e6i\",\"amend\":false}"
+  },
+  {
+    "message_id": "e701b95c-3532-4a4b-ac47-93c73c222f90",
+    "verb": "commit",
+    "raw": "git commit -m \"phase three persists 1794747109426\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase three persists 1794747109426\",\"amend\":false}"
+  },
+  {
+    "message_id": "71270b33-1c9e-4c8b-a202-a151c0e74acf",
+    "verb": "commit",
+    "raw": "git commit -m \"phase three persists mwhu38qz\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase three persists mwhu38qz\",\"amend\":false}"
+  }
+]
+
+## message events
+[
+  {
+    "message_id": "135326ce-dd82-4aec-8a7d-651dff3212f9",
+    "type": "created"
+  },
+  {
+    "message_id": "47012dd9-e6b9-4414-a2ba-468849d4a966",
+    "type": "created"
+  },
+  {
+    "message_id": "4b708e4e-a826-44df-a1c2-ccb86e735193",
+    "type": "created"
+  },
+  {
+    "message_id": "4f5bfbf6-162c-4f50-9400-562ce3dbbcb9",
+    "type": "created"
+  },
+  {
+    "message_id": "560cda02-1e76-45d2-8d1d-e3d1b7523abd",
+    "type": "created"
+  },
+  {
+    "message_id": "71270b33-1c9e-4c8b-a202-a151c0e74acf",
+    "type": "created"
+  },
+  {
+    "message_id": "dab3242d-092d-4fd9-aded-3603b81eedf7",
+    "type": "created"
+  },
+  {
+    "message_id": "e701b95c-3532-4a4b-ac47-93c73c222f90",
+    "type": "created"
+  },
+  {
+    "message_id": "f2103a6a-12d9-4243-a53a-e37fc0f0ab76",
+    "type": "created"
+  }
+]

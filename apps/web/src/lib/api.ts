@@ -7,6 +7,15 @@ import type {
 import type { ApiMessage, CreatedMessage } from "../types/message";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const WS_URL = import.meta.env.VITE_WS_URL ?? API_URL.replace(/^http/, "ws");
+
+/**
+ * One socket per conversation. The server subscribes the socket to that
+ * conversation only, and sends a `ready` frame once the subscription is live.
+ */
+export function conversationEventsUrl(conversationId: string): string {
+  return `${WS_URL}/conversations/${encodeURIComponent(conversationId)}/events`;
+}
 
 type CreateCommandResponse = {
   message: CreatedMessage;

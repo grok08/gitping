@@ -4,6 +4,7 @@ import type { BranchRepository } from "../repositories/branch-repository";
 import type { ConversationRepository } from "../repositories/conversation-repository";
 import type { MessageRepository } from "../repositories/message-repository";
 import type { UserRepository } from "../repositories/user-repository";
+import type { RealtimePublisher } from "../realtime/events";
 import type { Conversation } from "../types/domain";
 import type { MessageRecord, MessageRow } from "../types/http";
 
@@ -28,7 +29,19 @@ export type CommandServiceDependencies = {
   conversations: ConversationRepository;
   branches: BranchRepository;
   messages: MessageRepository;
+  events: RealtimePublisher;
 };
+
+function toRecord(row: MessageRow): MessageRecord {
+  return {
+    seq: row.seq,
+    id: row.id,
+    author: row.author,
+    text: row.text,
+    command: row.command,
+    createdAt: row.created_at,
+  };
+}
 
 const defaultConversation = "engineering";
 const defaultBranch = "main";
@@ -46,6 +59,7 @@ export function createCommandService({
   conversations,
   branches,
   messages,
+  events,
 }: CommandServiceDependencies) {
   return {
     send(
@@ -117,17 +131,18 @@ export function createCommandService({
       });
 
       const row = write();
+      const message = toRecord(row);
 
-      return {
-        ok: true,
-        message: {
-          id: row.id,
-          author: row.author,
-          text: row.text,
-          command: row.command,
-          createdAt: row.created_at,
-        },
-      };
+      // The transaction has committed, so the row is durable before any client
+      // is told about it. A rolled-back write never reaches this line.
+      events.publish({
+        type: "message.created",
+        conversationId: conversation.id,
+        seq: message.seq,
+        message,
+      });
+
+      return { ok: true, message };
     },
   };
 }

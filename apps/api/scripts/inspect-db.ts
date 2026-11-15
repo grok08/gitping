@@ -92,6 +92,7 @@ print(
   db
     .query(`
       SELECT
+        m.seq,
         m.id,
         u.handle AS author,
         c.name AS conversation,

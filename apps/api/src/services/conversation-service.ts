@@ -76,6 +76,10 @@ export function createConversationService({
   }
 
   return {
+    exists(conversationId: string): boolean {
+      return conversations.findById(conversationId) !== null;
+    },
+
     list(viewerHandle: string): ConversationSummary[] {
       return conversations.listSummaries(viewerId(viewerHandle));
     },

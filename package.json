@@ -10,7 +10,7 @@
     "dev:web": "bun run --cwd apps/web dev",
     "typecheck": "tsc -p packages/command-engine && tsc -p apps/api && tsc -p apps/web/tsconfig.app.json && tsc -p apps/web/tsconfig.node.json",
     "lint": "oxlint apps packages",
-    "test": "bun test apps/api/src packages/command-engine/src",
+    "test": "bun test apps/api/src apps/web/tests/unit packages/command-engine/src",
     "build": "bun run --cwd apps/web build",
     "test:e2e": "bun run --cwd apps/web test:e2e",
     "db:inspect": "bun run apps/api/scripts/inspect-db.ts",
