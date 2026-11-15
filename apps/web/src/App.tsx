@@ -19,6 +19,8 @@ import {
   getConversations,
   sendConversationCommand,
 } from "./lib/api";
+import { commandRequestId } from "./lib/commands";
+import type { PendingCommand } from "./lib/commands";
 import { fromApiMessage, fromConfirmedMessage, mergeMessages } from "./lib/messages";
 import type {
   ApiBranch,
@@ -60,6 +62,17 @@ function App() {
   const [error, setError] = useState("");
   const [input, setInput] = useState("");
   const [connection, setConnection] = useState<ConnectionStatus>("connecting");
+
+  /**
+   * The request id of the last failed send, kept so a retry of the same text
+   * resolves to the message the server may already have. It is scoped to the
+   * conversation it was sent to, so the same words in another channel are a
+   * new intent with a new id.
+   */
+  const [failedRequest, setFailedRequest] = useState<{
+    conversationId: string;
+    request: PendingCommand;
+  } | null>(null);
 
   const [globalSearch, setGlobalSearch] = useState("");
   const [chatSearch, setChatSearch] = useState("");
@@ -426,8 +439,17 @@ function App() {
 
     setError("");
 
+    const previous =
+      failedRequest?.conversationId === activeId ? failedRequest.request : null;
+    const request = commandRequestId(previous, value);
+
     try {
-      const message = await sendConversationCommand(activeId, value, branch);
+      const message = await sendConversationCommand(
+        activeId,
+        value,
+        branch,
+        request.id,
+      );
       const confirmed = fromConfirmedMessage(message);
 
       setMessages((current) => mergeMessages(current, [confirmed]));
@@ -441,12 +463,20 @@ function App() {
         ),
       );
 
-      setInput("");
+      setFailedRequest(null);
+      // Clear only the text that was sent. A response can land while the next
+      // command is already typed, and that draft belongs to the user, not to
+      // this response.
+      setInput((current) => (current.trim() === value ? "" : current));
 
       requestAnimationFrame(() => {
         composerRef.current?.focus();
       });
     } catch (submitError) {
+      // The composer keeps the text, so pressing send again is a retry of this
+      // same intent and reuses the id.
+      setFailedRequest({ conversationId: activeId, request });
+
       setError(
         submitError instanceof Error
           ? submitError.message

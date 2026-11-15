@@ -114,6 +114,7 @@ export async function sendConversationCommand(
   conversationId: string,
   input: string,
   branch: string,
+  requestId: string,
 ): Promise<CreatedMessage> {
   const response = await fetch(
     `${API_URL}/conversations/${encodeURIComponent(conversationId)}/commands`,
@@ -127,6 +128,7 @@ export async function sendConversationCommand(
       body: JSON.stringify({
         input,
         branch,
+        requestId,
       }),
     },
   );

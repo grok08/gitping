@@ -238,6 +238,16 @@ function backfillLegacyMessages(db: Database): void {
   }
 }
 
+const commandRequestsSchema = `
+  CREATE TABLE command_requests (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    message_id TEXT NOT NULL UNIQUE REFERENCES messages(id) ON DELETE CASCADE,
+    author_id TEXT NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL
+  )
+`;
+
 const migrations: Migration[] = [
   {
     version: 1,
@@ -257,6 +267,13 @@ const migrations: Migration[] = [
         backfillLegacyMessages(db);
         db.run("DROP TABLE messages_legacy");
       }
+    },
+  },
+  {
+    version: 2,
+    name: "idempotent commands",
+    run(db) {
+      db.run(commandRequestsSchema);
     },
   },
 ];

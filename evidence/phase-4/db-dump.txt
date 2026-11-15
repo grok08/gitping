@@ -1,14 +1,15 @@
 $ bun run apps/api/scripts/inspect-db.ts "apps/web/test-results/gitping-e2e.db"
 database: apps/web/test-results/gitping-e2e.db
-schema version: 1
+schema version: 2
 
 ## row counts
-branches: 13
-conversation_members: 26
-conversations: 11
-git_commands: 9
-message_events: 9
-messages: 9
+branches: 14
+command_requests: 10
+conversation_members: 27
+conversations: 12
+git_commands: 10
+message_events: 10
+messages: 10
 users: 4
 
 ## users
@@ -48,23 +49,28 @@ users: 4
     "kind": "channel"
   },
   {
-    "id": "conv-channel-phase-four-live-mwhulwoi",
-    "name": "phase-four-live-mwhulwoi",
+    "id": "conv-channel-phase-four-idempotent-mwhvvonj",
+    "name": "phase-four-idempotent-mwhvvonj",
     "kind": "channel"
   },
   {
-    "id": "conv-channel-phase-four-order-mwhulzf4",
-    "name": "phase-four-order-mwhulzf4",
+    "id": "conv-channel-phase-four-live-mwhvvq3z",
+    "name": "phase-four-live-mwhvvq3z",
     "kind": "channel"
   },
   {
-    "id": "conv-channel-phase-four-reconnect-mwhulz53",
-    "name": "phase-four-reconnect-mwhulz53",
+    "id": "conv-channel-phase-four-order-mwhvvrbl",
+    "name": "phase-four-order-mwhvvrbl",
     "kind": "channel"
   },
   {
-    "id": "conv-channel-phase-three-mwhulx0g",
-    "name": "phase-three-mwhulx0g",
+    "id": "conv-channel-phase-four-reconnect-mwhvvrav",
+    "name": "phase-four-reconnect-mwhvvrav",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-three-mwhvvozy",
+    "name": "phase-three-mwhvvozy",
     "kind": "channel"
   },
   {
@@ -157,22 +163,27 @@ users: 4
     "role": "developer"
   },
   {
-    "conversation": "phase-four-live-mwhulwoi",
+    "conversation": "phase-four-idempotent-mwhvvonj",
     "member": "grok08",
     "role": "owner"
   },
   {
-    "conversation": "phase-four-order-mwhulzf4",
+    "conversation": "phase-four-live-mwhvvq3z",
     "member": "grok08",
     "role": "owner"
   },
   {
-    "conversation": "phase-four-reconnect-mwhulz53",
+    "conversation": "phase-four-order-mwhvvrbl",
     "member": "grok08",
     "role": "owner"
   },
   {
-    "conversation": "phase-three-mwhulx0g",
+    "conversation": "phase-four-reconnect-mwhvvrav",
+    "member": "grok08",
+    "role": "owner"
+  },
+  {
+    "conversation": "phase-three-mwhvvozy",
     "member": "grok08",
     "role": "owner"
   },
@@ -246,7 +257,7 @@ users: 4
     "id": "branch-conv-engineering-main",
     "conversation": "engineering",
     "branch": "main",
-    "head": "9effcf07"
+    "head": "ffe8d6c8"
   },
   {
     "id": "branch-conv-engineering-weekend",
@@ -267,28 +278,34 @@ users: 4
     "head": "-"
   },
   {
-    "id": "branch-conv-channel-phase-four-live-mwhulwoi-main",
-    "conversation": "phase-four-live-mwhulwoi",
+    "id": "branch-conv-channel-phase-four-idempotent-mwhvvonj-main",
+    "conversation": "phase-four-idempotent-mwhvvonj",
     "branch": "main",
-    "head": "5dcd875c"
+    "head": "ab6eeb04"
   },
   {
-    "id": "branch-conv-channel-phase-four-order-mwhulzf4-main",
-    "conversation": "phase-four-order-mwhulzf4",
+    "id": "branch-conv-channel-phase-four-live-mwhvvq3z-main",
+    "conversation": "phase-four-live-mwhvvq3z",
     "branch": "main",
-    "head": "e59f166b"
+    "head": "79b23786"
   },
   {
-    "id": "branch-conv-channel-phase-four-reconnect-mwhulz53-main",
-    "conversation": "phase-four-reconnect-mwhulz53",
+    "id": "branch-conv-channel-phase-four-order-mwhvvrbl-main",
+    "conversation": "phase-four-order-mwhvvrbl",
     "branch": "main",
-    "head": "190d5b2e"
+    "head": "a1063da5"
   },
   {
-    "id": "branch-conv-channel-phase-three-mwhulx0g-main",
-    "conversation": "phase-three-mwhulx0g",
+    "id": "branch-conv-channel-phase-four-reconnect-mwhvvrav-main",
+    "conversation": "phase-four-reconnect-mwhvvrav",
     "branch": "main",
-    "head": "9bbf47c5"
+    "head": "3b38a4bf"
+  },
+  {
+    "id": "branch-conv-channel-phase-three-mwhvvozy-main",
+    "conversation": "phase-three-mwhvvozy",
+    "branch": "main",
+    "head": "e0fe49d7"
   },
   {
     "id": "branch-conv-rahul-main",
@@ -314,190 +331,284 @@ users: 4
 [
   {
     "seq": 1,
-    "id": "9effcf07-46aa-4c24-90a8-dd77ba1887f3",
+    "id": "e0fe49d7-f966-424a-9764-54accbfc3807",
+    "author": "grok08",
+    "conversation": "phase-three-mwhvvozy",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase three persists mwhvvozy",
+    "created_at": "2026-11-15T13:41:59.165Z"
+  },
+  {
+    "seq": 2,
+    "id": "ffe8d6c8-1933-4246-95ec-b9388746ca9d",
     "author": "grok08",
     "conversation": "engineering",
     "branch": "main",
     "command": "commit",
-    "text": "phase three persists 1794747980835",
-    "created_at": "2026-11-15T13:06:22.476Z"
-  },
-  {
-    "seq": 2,
-    "id": "9bbf47c5-f083-4323-9fbc-07d9648cf392",
-    "author": "grok08",
-    "conversation": "phase-three-mwhulx0g",
-    "branch": "main",
-    "command": "commit",
-    "text": "phase three persists mwhulx0g",
-    "created_at": "2026-11-15T13:06:23.560Z"
+    "text": "phase three persists 1794750116836",
+    "created_at": "2026-11-15T13:41:59.439Z"
   },
   {
     "seq": 3,
-    "id": "5dcd875c-9fce-49d4-9af5-a945ae14cc1f",
+    "id": "ab6eeb04-cea3-44e9-a086-9bb1d1a2c3cf",
     "author": "grok08",
-    "conversation": "phase-four-live-mwhulwoi",
+    "conversation": "phase-four-idempotent-mwhvvonj",
     "branch": "main",
     "command": "commit",
-    "text": "phase four live mwhulwoi",
-    "created_at": "2026-11-15T13:06:26.975Z"
+    "text": "idempotent retry mwhvvonj",
+    "created_at": "2026-11-15T13:42:00.168Z"
   },
   {
     "seq": 4,
-    "id": "190d5b2e-cbd9-4d14-99cd-86b603550b24",
+    "id": "79b23786-f810-4215-8863-5e6c44a5f648",
     "author": "grok08",
-    "conversation": "phase-four-reconnect-mwhulz53",
+    "conversation": "phase-four-live-mwhvvq3z",
     "branch": "main",
     "command": "commit",
-    "text": "phase four reconnect mwhulz53",
-    "created_at": "2026-11-15T13:06:29.678Z"
+    "text": "phase four live mwhvvq3z",
+    "created_at": "2026-11-15T13:42:03.636Z"
   },
   {
     "seq": 5,
-    "id": "b4c8bd7f-5fb5-4c0f-9064-48fb60f60150",
+    "id": "ee625a4c-e257-4969-ad9a-e0b546eb5875",
     "author": "grok08",
-    "conversation": "phase-four-order-mwhulzf4",
+    "conversation": "phase-four-order-mwhvvrbl",
     "branch": "main",
     "command": "commit",
-    "text": "phase four order mwhulzf4 1",
-    "created_at": "2026-11-15T13:06:29.971Z"
+    "text": "phase four order mwhvvrbl 1",
+    "created_at": "2026-11-15T13:42:04.951Z"
   },
   {
     "seq": 6,
-    "id": "4fb42ef7-761e-400f-877f-c91ef7291a81",
+    "id": "0954ffbd-ae1f-4977-80db-9d33500bba24",
     "author": "grok08",
-    "conversation": "phase-four-order-mwhulzf4",
+    "conversation": "phase-four-order-mwhvvrbl",
     "branch": "main",
     "command": "commit",
-    "text": "phase four order mwhulzf4 2",
-    "created_at": "2026-11-15T13:06:30.157Z"
+    "text": "phase four order mwhvvrbl 2",
+    "created_at": "2026-11-15T13:42:05.143Z"
   },
   {
     "seq": 7,
-    "id": "26ff6ee6-a2fd-42c7-b510-42be47e9b27e",
+    "id": "3b38a4bf-f8e1-49b6-a8b9-adaff917532b",
     "author": "grok08",
-    "conversation": "phase-four-order-mwhulzf4",
+    "conversation": "phase-four-reconnect-mwhvvrav",
     "branch": "main",
     "command": "commit",
-    "text": "phase four order mwhulzf4 3",
-    "created_at": "2026-11-15T13:06:30.310Z"
+    "text": "phase four reconnect mwhvvrav",
+    "created_at": "2026-11-15T13:42:05.153Z"
   },
   {
     "seq": 8,
-    "id": "e05c32b9-1e69-4f89-ad19-1e99ed80f00c",
+    "id": "30317d79-997b-46b0-9332-2f1a5a145c0b",
     "author": "grok08",
-    "conversation": "phase-four-order-mwhulzf4",
+    "conversation": "phase-four-order-mwhvvrbl",
     "branch": "main",
     "command": "commit",
-    "text": "phase four order mwhulzf4 4",
-    "created_at": "2026-11-15T13:06:30.435Z"
+    "text": "phase four order mwhvvrbl 3",
+    "created_at": "2026-11-15T13:42:05.331Z"
   },
   {
     "seq": 9,
-    "id": "e59f166b-101e-4841-8838-c054945308a0",
+    "id": "a1ab3665-3d2e-43bb-a950-3eae1b075604",
     "author": "grok08",
-    "conversation": "phase-four-order-mwhulzf4",
+    "conversation": "phase-four-order-mwhvvrbl",
     "branch": "main",
     "command": "commit",
-    "text": "phase four order mwhulzf4 5",
-    "created_at": "2026-11-15T13:06:30.596Z"
+    "text": "phase four order mwhvvrbl 4",
+    "created_at": "2026-11-15T13:42:05.486Z"
+  },
+  {
+    "seq": 10,
+    "id": "a1063da5-92c7-4261-bc49-941a160b5b76",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhvvrbl",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhvvrbl 5",
+    "created_at": "2026-11-15T13:42:05.583Z"
   }
 ]
 
 ## git commands
 [
   {
-    "message_id": "5dcd875c-9fce-49d4-9af5-a945ae14cc1f",
+    "message_id": "ab6eeb04-cea3-44e9-a086-9bb1d1a2c3cf",
     "verb": "commit",
-    "raw": "git commit -m \"phase four live mwhulwoi\"",
-    "args": "{\"type\":\"commit\",\"message\":\"phase four live mwhulwoi\",\"amend\":false}"
+    "raw": "git commit -m \"idempotent retry mwhvvonj\"",
+    "args": "{\"type\":\"commit\",\"message\":\"idempotent retry mwhvvonj\",\"amend\":false}"
   },
   {
-    "message_id": "b4c8bd7f-5fb5-4c0f-9064-48fb60f60150",
+    "message_id": "79b23786-f810-4215-8863-5e6c44a5f648",
     "verb": "commit",
-    "raw": "git commit -m \"phase four order mwhulzf4 1\"",
-    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhulzf4 1\",\"amend\":false}"
+    "raw": "git commit -m \"phase four live mwhvvq3z\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four live mwhvvq3z\",\"amend\":false}"
   },
   {
-    "message_id": "4fb42ef7-761e-400f-877f-c91ef7291a81",
+    "message_id": "ee625a4c-e257-4969-ad9a-e0b546eb5875",
     "verb": "commit",
-    "raw": "git commit -m \"phase four order mwhulzf4 2\"",
-    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhulzf4 2\",\"amend\":false}"
+    "raw": "git commit -m \"phase four order mwhvvrbl 1\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhvvrbl 1\",\"amend\":false}"
   },
   {
-    "message_id": "26ff6ee6-a2fd-42c7-b510-42be47e9b27e",
+    "message_id": "0954ffbd-ae1f-4977-80db-9d33500bba24",
     "verb": "commit",
-    "raw": "git commit -m \"phase four order mwhulzf4 3\"",
-    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhulzf4 3\",\"amend\":false}"
+    "raw": "git commit -m \"phase four order mwhvvrbl 2\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhvvrbl 2\",\"amend\":false}"
   },
   {
-    "message_id": "e05c32b9-1e69-4f89-ad19-1e99ed80f00c",
+    "message_id": "30317d79-997b-46b0-9332-2f1a5a145c0b",
     "verb": "commit",
-    "raw": "git commit -m \"phase four order mwhulzf4 4\"",
-    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhulzf4 4\",\"amend\":false}"
+    "raw": "git commit -m \"phase four order mwhvvrbl 3\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhvvrbl 3\",\"amend\":false}"
   },
   {
-    "message_id": "e59f166b-101e-4841-8838-c054945308a0",
+    "message_id": "a1ab3665-3d2e-43bb-a950-3eae1b075604",
     "verb": "commit",
-    "raw": "git commit -m \"phase four order mwhulzf4 5\"",
-    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhulzf4 5\",\"amend\":false}"
+    "raw": "git commit -m \"phase four order mwhvvrbl 4\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhvvrbl 4\",\"amend\":false}"
   },
   {
-    "message_id": "190d5b2e-cbd9-4d14-99cd-86b603550b24",
+    "message_id": "a1063da5-92c7-4261-bc49-941a160b5b76",
     "verb": "commit",
-    "raw": "git commit -m \"phase four reconnect mwhulz53\"",
-    "args": "{\"type\":\"commit\",\"message\":\"phase four reconnect mwhulz53\",\"amend\":false}"
+    "raw": "git commit -m \"phase four order mwhvvrbl 5\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhvvrbl 5\",\"amend\":false}"
   },
   {
-    "message_id": "9effcf07-46aa-4c24-90a8-dd77ba1887f3",
+    "message_id": "3b38a4bf-f8e1-49b6-a8b9-adaff917532b",
     "verb": "commit",
-    "raw": "git commit -m \"phase three persists 1794747980835\"",
-    "args": "{\"type\":\"commit\",\"message\":\"phase three persists 1794747980835\",\"amend\":false}"
+    "raw": "git commit -m \"phase four reconnect mwhvvrav\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four reconnect mwhvvrav\",\"amend\":false}"
   },
   {
-    "message_id": "9bbf47c5-f083-4323-9fbc-07d9648cf392",
+    "message_id": "ffe8d6c8-1933-4246-95ec-b9388746ca9d",
     "verb": "commit",
-    "raw": "git commit -m \"phase three persists mwhulx0g\"",
-    "args": "{\"type\":\"commit\",\"message\":\"phase three persists mwhulx0g\",\"amend\":false}"
+    "raw": "git commit -m \"phase three persists 1794750116836\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase three persists 1794750116836\",\"amend\":false}"
+  },
+  {
+    "message_id": "e0fe49d7-f966-424a-9764-54accbfc3807",
+    "verb": "commit",
+    "raw": "git commit -m \"phase three persists mwhvvozy\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase three persists mwhvvozy\",\"amend\":false}"
   }
 ]
 
 ## message events
 [
   {
-    "message_id": "190d5b2e-cbd9-4d14-99cd-86b603550b24",
+    "message_id": "0954ffbd-ae1f-4977-80db-9d33500bba24",
     "type": "created"
   },
   {
-    "message_id": "26ff6ee6-a2fd-42c7-b510-42be47e9b27e",
+    "message_id": "30317d79-997b-46b0-9332-2f1a5a145c0b",
     "type": "created"
   },
   {
-    "message_id": "4fb42ef7-761e-400f-877f-c91ef7291a81",
+    "message_id": "3b38a4bf-f8e1-49b6-a8b9-adaff917532b",
     "type": "created"
   },
   {
-    "message_id": "5dcd875c-9fce-49d4-9af5-a945ae14cc1f",
+    "message_id": "79b23786-f810-4215-8863-5e6c44a5f648",
     "type": "created"
   },
   {
-    "message_id": "9bbf47c5-f083-4323-9fbc-07d9648cf392",
+    "message_id": "a1063da5-92c7-4261-bc49-941a160b5b76",
     "type": "created"
   },
   {
-    "message_id": "9effcf07-46aa-4c24-90a8-dd77ba1887f3",
+    "message_id": "a1ab3665-3d2e-43bb-a950-3eae1b075604",
     "type": "created"
   },
   {
-    "message_id": "b4c8bd7f-5fb5-4c0f-9064-48fb60f60150",
+    "message_id": "ab6eeb04-cea3-44e9-a086-9bb1d1a2c3cf",
     "type": "created"
   },
   {
-    "message_id": "e05c32b9-1e69-4f89-ad19-1e99ed80f00c",
+    "message_id": "e0fe49d7-f966-424a-9764-54accbfc3807",
     "type": "created"
   },
   {
-    "message_id": "e59f166b-101e-4841-8838-c054945308a0",
+    "message_id": "ee625a4c-e257-4969-ad9a-e0b546eb5875",
     "type": "created"
+  },
+  {
+    "message_id": "ffe8d6c8-1933-4246-95ec-b9388746ca9d",
+    "type": "created"
+  }
+]
+
+## command requests
+[
+  {
+    "id": "5d5ff690-1b79-45d9-a5c4-fd23579d0981",
+    "conversation": "phase-three-mwhvvozy",
+    "author": "grok08",
+    "message": "e0fe49d7",
+    "created_at": "2026-11-15T13:41:59.165Z"
+  },
+  {
+    "id": "fa7258ab-f061-49d3-b30d-40998efe919c",
+    "conversation": "engineering",
+    "author": "grok08",
+    "message": "ffe8d6c8",
+    "created_at": "2026-11-15T13:41:59.439Z"
+  },
+  {
+    "id": "fdb6cc8c-bcbb-47b0-9ada-b1ad3b5b00d8",
+    "conversation": "phase-four-idempotent-mwhvvonj",
+    "author": "grok08",
+    "message": "ab6eeb04",
+    "created_at": "2026-11-15T13:42:00.168Z"
+  },
+  {
+    "id": "18e4bf08-a230-45f6-9b8f-4eb7ebc4fef0",
+    "conversation": "phase-four-live-mwhvvq3z",
+    "author": "grok08",
+    "message": "79b23786",
+    "created_at": "2026-11-15T13:42:03.636Z"
+  },
+  {
+    "id": "e04fdb30-0f1f-40a9-8e38-a107978b765a",
+    "conversation": "phase-four-order-mwhvvrbl",
+    "author": "grok08",
+    "message": "ee625a4c",
+    "created_at": "2026-11-15T13:42:04.951Z"
+  },
+  {
+    "id": "b4be853c-59fd-4aaf-a048-ce33688ac0fb",
+    "conversation": "phase-four-order-mwhvvrbl",
+    "author": "grok08",
+    "message": "0954ffbd",
+    "created_at": "2026-11-15T13:42:05.143Z"
+  },
+  {
+    "id": "9a32e789-a9a3-47ed-8680-6c4b5a5f39f4",
+    "conversation": "phase-four-reconnect-mwhvvrav",
+    "author": "grok08",
+    "message": "3b38a4bf",
+    "created_at": "2026-11-15T13:42:05.153Z"
+  },
+  {
+    "id": "2fdf1cf2-6b72-4fc7-aeb0-b45d6acf1f75",
+    "conversation": "phase-four-order-mwhvvrbl",
+    "author": "grok08",
+    "message": "30317d79",
+    "created_at": "2026-11-15T13:42:05.331Z"
+  },
+  {
+    "id": "c6af6065-7cc2-4602-bb15-b809ec88b257",
+    "conversation": "phase-four-order-mwhvvrbl",
+    "author": "grok08",
+    "message": "a1ab3665",
+    "created_at": "2026-11-15T13:42:05.486Z"
+  },
+  {
+    "id": "cfe5c7b3-ad4c-49e2-ab53-9f38e7d5868a",
+    "conversation": "phase-four-order-mwhvvrbl",
+    "author": "grok08",
+    "message": "a1063da5",
+    "created_at": "2026-11-15T13:42:05.583Z"
   }
 ]

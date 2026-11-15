@@ -23,6 +23,7 @@ export type CommandRequest = {
   author?: string;
   conversation?: string;
   branch?: string;
+  requestId?: string;
 };
 
 export type CommandResponse = {
@@ -64,6 +65,7 @@ export type CreateConversationRequest = {
 export type ConversationCommandRequest = {
   input?: string;
   branch?: string;
+  requestId?: string;
 };
 
 export type CreateConversationResponse = {

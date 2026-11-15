@@ -4,7 +4,7 @@ Phase 4 is "Real-Time Messaging". A commit still goes to SQLite first through HT
 
 ## Result
 
-Complete. `bun run check` exits 0. 108 unit and integration tests pass and 22 browser tests pass. Two real browser clients prove live delivery, a shared server message id, persistence after reload, reconnect catch-up with no duplicate, and identical ordering. A hardening pass added a client heartbeat, an origin check on the upgrade, buffer-overflow eviction, a conversation guard on frames, monotonic previews, jittered reconnects, and per-test conversation isolation.
+Complete. `bun run check` exits 0. 126 unit and integration tests pass and 23 browser tests pass. Two real browser clients prove live delivery, a shared server message id, persistence after reload, reconnect catch-up with no duplicate, and identical ordering. A hardening pass added a client heartbeat, an origin check on the upgrade, buffer-overflow eviction, a conversation guard on frames, monotonic previews, jittered reconnects, and per-test conversation isolation. Client-named commands close the lost-response gap: a retried send resolves to the message the server already stored, and a browser test drops a real response to prove it.
 
 ## Commands and results
 
@@ -13,17 +13,17 @@ Complete. `bun run check` exits 0. 108 unit and integration tests pass and 22 br
 | `bun install` (repo root) | exit 0, lockfile updated for `@types/bun` in `apps/web` |
 | `bun run typecheck` | exit 0 (4 projects: command-engine, api, web app, web node/tests) |
 | `bun run lint` | exit 0 (oxlint over `apps` and `packages`, no warnings) |
-| `bun run test` | 108 passed, 0 failed, 11 files |
-| `bun run build` | exit 0, `dist/assets/index-*.js` 254.72 kB, CSS 29.67 kB |
-| `bun run test:e2e` | 22 passed |
-| `bun run check` | exit 0 (108 unit tests, 22 browser tests) |
+| `bun run test` | 126 passed, 0 failed, 13 files |
+| `bun run build` | exit 0, `dist/assets/index-*.js` 254.96 kB, CSS 29.67 kB |
+| `bun run test:e2e` | 23 passed |
+| `bun run check` | exit 0 (126 unit tests, 23 browser tests) |
 | `bun x playwright test tests/e2e/visual.spec.ts` before baseline update | 5 failed, 3 passed (deliberate; log in [visual-parity-before-update.txt](visual-parity-before-update.txt)) |
 | `bun x playwright test tests/e2e/visual.spec.ts --update-snapshots` | 8 passed; 5 baselines regenerated ([log](visual-parity-update.txt)) |
 | `bun run db:inspect apps/web/test-results/gitping-e2e.db` | [db-dump.txt](db-dump.txt) |
 
-The 108 unit tests are 30 command-engine parser tests, 19 HTTP API tests, 11 command-service tests, 10 conversation-service tests, 4 migration tests, 7 message-hub tests, 4 frame-parser tests, 8 realtime integration tests against a real Bun server, 6 client message-merge tests, 6 client realtime tests, and 3 heartbeat tests.
+The 126 unit tests are 30 command-engine parser tests, 23 HTTP API tests, 17 command-service tests, 10 conversation-service tests, 6 migration tests, 2 command-request repository tests, 7 message-hub tests, 4 frame-parser tests, 8 realtime integration tests against a real Bun server, 6 client message-merge tests, 6 client realtime tests, 3 heartbeat tests, and 4 client command-request id tests.
 
-The 22 browser tests are 6 mocked UI tests, 2 real-API domain tests, 2 real-API conversation tests, 8 visual parity tests, and 4 real-API realtime tests.
+The 23 browser tests are 6 mocked UI tests, 2 real-API domain tests, 2 real-API conversation tests, 8 visual parity tests, 4 real-API realtime tests, and 1 real-API idempotency test.
 
 ## The WebSocket design
 
@@ -140,32 +140,104 @@ A dedicated channel keeps this test away from the other tests running in paralle
 
 The connection indicator is checked at 390 px: it is visible, inside the viewport, the header stays 68 px tall, and the document does not scroll horizontally. [screenshots/mobile-connection-badge.png](screenshots/mobile-connection-badge.png)
 
+## Idempotent commands
+
+`docs/realtime-idempotency.md` is implemented. A client names one intent with `requestId` before the first attempt; a retry of the same text reuses that id, and the server answers with the message it already stored instead of writing a second one.
+
+### Commands and results
+
+| Command | Result |
+| --- | --- |
+| `bun run --cwd apps/web test:e2e tests/e2e/idempotency.spec.ts` | exit 0, 1 passed (1.5 s) |
+| `cmd /c "bun run check > %TEMP%\check.log 2>&1"` (first and second full runs) | exit 1 both times: the existing `realtime.spec.ts` ordering test hit the 30 s test timeout, at a different message count each run |
+| `bun run --cwd apps/web test:e2e tests/e2e/realtime.spec.ts --repeat-each=3` | exit 0, 12 passed (11.8 s) after the composer fix |
+| `cmd /c "bun run check > %TEMP%\check.log 2>&1"` (final two runs) | exit 0 both times: 126 unit tests, 23 browser tests (13.5 s and 13.7 s) |
+| `bun run db:inspect apps/web/test-results/gitping-e2e.db` | [db-dump.txt](db-dump.txt), schema version 2 |
+
+The two failing full runs are recorded here rather than dropped. Both failed in `realtime.spec.ts:246` (ordering), which sends five commits back to back without waiting for each response. The page showed three or four of the five and an empty composer, and the next `click` waited on a disabled send button until the 30 s timeout, after which its `finally` failed to close an already-closed context.
+
+The cause was a real client bug, not the new server work: `handleSubmit` cleared the composer unconditionally when the response arrived, so a draft typed while an earlier send was in flight was wiped, and a click on the now-empty composer did nothing. `App.tsx` now clears only the text that was actually sent (`setInput((current) => current.trim() === value ? "" : current)`). See "Failures found and fixed". The raw log of the failing runs was overwritten by the later runs and is not reproduced here.
+
+### What the tests pin
+
+- **Migration 2** (`apps/api/src/migrations.test.ts`): a fresh database is at version 2 and has `command_requests` with `id` as the only primary key; running `initializeDatabase` twice is a no-op at version 2; a version 1 database (v1 schema, seed data, no request table, `user_version = 1`) upgrades in place and keeps its seeded rows. Migration 1 is untouched.
+- **Repository** (`command-request-repository.test.ts`): insert then find returns the row in camelCase; an unknown id returns `null`.
+- **Service** (`command-service.test.ts`): the same id twice returns the same message with `replayed: true`, one `messages` row, one `git_commands` row, one `message_events` row, one `command_requests` row, and one publish; the same id in another conversation is `request_conflict`; the same id from another author is `request_conflict`; a different id creates a second message; no id keeps one commit per request; a simulated concurrent duplicate loses the request-row insert, rolls back its whole transaction, and replays the winner's message with the branch head still on it.
+- **HTTP** (`app.test.ts`): two POSTs with one id are `201`/`201` with the same message id, `Idempotent-Replay: true` on the second, and one row from `GET /messages`; the compatibility route behaves the same; `short`, `has spaces`, 65 characters, a number, an empty string, and `bad!id` are all `400` with the documented error and write nothing; a reused id in another conversation is `409`.
+- **Client unit** (`apps/web/tests/unit/commands.test.ts`): `commandRequestId` returns the previous object for the same text, generates a new id for changed text, generates distinct ids for two first sends, and keeps one id across repeated retries.
+
+### Browser proof: a real commit, a lost response, a retry
+`tests/e2e/idempotency.spec.ts` uses the real API. It opens a fresh `phase-four-idempotent-…` channel, then installs `page.route` for that one command URL. The handler calls `route.fetch()`, so the POST reaches the real server and the commit is written and broadcast, then `route.abort()`, so the page's `fetch` rejects. Only the response is dropped; the request and the database are real.
+
+1. The error is shown and the composer still holds `git commit -m "…"`. [screenshots/idempotent-lost-response-keeps-text.png](screenshots/idempotent-lost-response-keeps-text.png)
+2. Clicking send again reuses the request id. The server replays the stored message, nothing is published, and the client merges by id. [screenshots/idempotent-retry-after-lost-response.png](screenshots/idempotent-retry-after-lost-response.png)
+3. The page shows exactly one `.message-row` for that text with exactly one `.commit-id`.
+4. `GET /conversations/:id/messages` from the test's request context returns exactly one message, so the proof of one row does not rest on the UI alone.
+
+### Independent review
+
+The reviewer re-ran the gate on the tree as it stands, rather than trusting the implementation report:
+
+- `bun run check`: exit 0, 126 unit tests, 23 browser tests, build 254.96 kB.
+- `bun run --cwd apps/web test:e2e tests/e2e/realtime.spec.ts --repeat-each=4`: exit 0, 16 passed, including four runs of the ordering test that had flaked, under eleven parallel workers.
+- Negative control on the new browser test: making `commandRequestId` mint a fresh id for every retry, which is the mistake the design warns about, makes the spec fail with `expect(rows).toHaveCount(1)` receiving 2. The proof is not vacuous. The negative control was reverted before the final run.
+
+### Rows left by that test
+From [db-dump.txt](db-dump.txt), schema version 2:
+
+```text
+messages
+  { "seq": 3, "id": "ab6eeb04-cea3-44e9-a086-9bb1d1a2c3cf",
+    "author": "grok08", "conversation": "phase-four-idempotent-mwhvvonj",
+    "branch": "main", "command": "commit", "text": "idempotent retry mwhvvonj" }
+
+command requests: 10 rows, one per client-named command in the suite
+  { "id": "fdb6cc8c-bcbb-47b0-9ada-b1ad3b5b00d8",
+    "conversation": "phase-four-idempotent-mwhvvonj",
+    "author": "grok08", "message": "ab6eeb04",
+    "created_at": "2026-11-15T13:42:00.168Z" }
+```
+
+The branch head for that channel is `ab6eeb04`, so the channel's only commit is the replayed one. The request row's `created_at` is the message's `created_at` because both are written in the same transaction. The other nine rows belong to the realtime and Phase 3 browser tests, whose client sends now always carry an id; `## command requests` in the dump lists them all.
+
 ## Database dump
 
 [db-dump.txt](db-dump.txt) is the database left by the final `bun run check`. It shows every new row with its commit order:
 
 ```text
-messages
-  { "seq": 3, "id": "5dcd875c-9fce-49d4-9af5-a945ae14cc1f",
-    "author": "grok08", "conversation": "phase-four-live-mwhulwoi",
-    "branch": "main", "command": "commit",
-    "text": "phase four live mwhulwoi" }
-  { "seq": 4, "id": "190d5b2e-cbd9-4d14-99cd-86b603550b24",
-    "author": "grok08", "conversation": "phase-four-reconnect-mwhulz53",
-    "branch": "main", "command": "commit",
-    "text": "phase four reconnect mwhulz53" }
-  { "seq": 5 .. 9, "conversation": "phase-four-order-mwhulzf4",
-    "text": "phase four order mwhulzf4 1 .. 5" }
+messages: 10, in `seq` order
+  one Phase 3 commit in `engineering`
+  one Phase 3 commit in `phase-three-mwhvvozy`
+  one idempotent retry in `phase-four-idempotent-mwhvvonj`
+  one live delivery in `phase-four-live-mwhvvq3z`
+  one reconnect catch-up in `phase-four-reconnect-mwhvvrav`
+  five ordering commits in `phase-four-order-mwhvvrbl`
+  (test groups interleave because they run in parallel; `seq` is the order)
 
-message events
+message events: 10
   one "created" event per message id above
+
+command requests: 10
+  one row per message above, including the idempotent retry
 ```
 
-`conversations` has 11 rows: the 6 seeded conversations plus the channels created by the Phase 3 and Phase 4 tests. Each realtime test now writes into its own channel, so those rows are separable by name. `schema version: 1` confirms no schema change was needed.
+`conversations` has 12 rows: the 6 seeded conversations plus 6 created by the Phase 3 and Phase 4 browser tests (five channels and one direct conversation). Each realtime test writes into its own channel, so those rows are separable by name. `schema version: 2` is migration 2, the `command_requests` table.
 
-## No schema change
+## Schema change: migration 2
 
-Phase 4 adds no migration, and migration 1 is untouched. Everything it needs already existed: `messages.seq` for order, `message_events` for the created event, and `PRAGMA user_version = 1`.
+Migration 1 is untouched. Migration 2 adds one table and is the only schema change in Phase 4:
+
+```sql
+CREATE TABLE command_requests (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  message_id TEXT NOT NULL UNIQUE REFERENCES messages(id) ON DELETE CASCADE,
+  author_id TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+```
+
+`UNIQUE (message_id)` keeps the mapping 1:1, and `author_id` is stored now so the replay check does not need a second migration when identity lands. `PRAGMA user_version` is 2, and the health endpoint reports it.
 
 ## Visual parity
 
@@ -184,6 +256,8 @@ The indicator adds one element to `chat-meta`, so the Phase 1 baselines were reg
 
 Only the badge pixels differ; nothing else moved. The 5 failures before the update are kept in [visual-parity-before-update.txt](visual-parity-before-update.txt), and the update run in [visual-parity-update.txt](visual-parity-update.txt). A parity failure from any other cause is still a bug.
 
+The idempotency change adds no UI. The final `bun run check` passed all 8 visual parity tests against the existing baselines with no `--update-snapshots` run, so no baseline moved.
+
 The Phase 3 specs also re-capture their own screenshots on every run (`domain.spec.ts`, `conversations.spec.ts`), so `evidence/phase-3/screenshots/` was refreshed by the same `bun run check`. Those files now show the header badge; their assertions are unchanged.
 
 ## Failures found and fixed
@@ -194,6 +268,7 @@ The Phase 3 specs also re-capture their own screenshots on every run (`domain.sp
 4. **`oxlint` warned about reading refs during render.** The socket hook kept its handlers in a ref, and `App` kept the active conversation id in a ref, both written during render. Both are now written from effects.
 5. **The sidebar preview stayed stale after a reconnect.** Catch-up merged history but did not refresh the preview, so a client that missed a broadcast showed `No messages yet` next to messages. `refreshMessages` now advances the preview from the newest persisted message.
 6. **The heartbeat never timed out.** The first implementation cleared and re-armed the deadline on every ping tick, so silence just kept pushing the deadline out: `bun run test` failed with `pings, then reports a timeout when nothing answers` — expected `timeouts > 0`, received `0`. A tick now pings only when no ping is outstanding, which is what makes the deadline able to expire.
+7. **A finished send wiped the next draft.** `handleSubmit` called `setInput("")` when the response arrived, so text typed while that send was in flight disappeared, and the send button went back to disabled with the command gone. The ordering test exposed it: five rapid sends rendered three or four rows and then waited 30 s on a click that could never be enabled, failing two full `check` runs. `App.tsx` now clears only the text that was sent, and five rapid sends are proven by `realtime.spec.ts --repeat-each=3` (12 passed) plus two full runs.
 
 ## Hardening pass
 
@@ -209,12 +284,13 @@ Seven issues were fixed on top of the phase commit, all covered by tests:
 | Reconnects retried in lockstep | 20% jitter on each backoff step | 6 client realtime tests |
 | Two realtime tests shared `engineering` | each test creates its own channel | 4 realtime browser tests |
 
-Four issues are knowingly left alone, because each would cost a protocol or schema change to cover a failure mode this app does not produce yet:
+Three issues are knowingly left alone, because each would cost a protocol or schema change to cover a failure mode this app does not produce yet:
 
-- **Duplicate commits after a lost POST response** need a client-supplied idempotency key and a uniqueness constraint. The composer keeps the text on failure and never retries automatically, so the human decides.
 - **A crash between commit and broadcast** would leave a row nobody was pushed. Closing it properly needs a transactional outbox and a relay loop; reconnect catch-up repairs the symptom. Design: [docs/realtime-outbox.md](../../docs/realtime-outbox.md).
 - **Membership checks on the socket** need an identity model. The origin check covers the browser case; any client that can open a socket can still read any conversation id.
 - **A `since=seq` catch-up** is an optimisation with no visible benefit at this data size. Design: [docs/realtime-catch-up.md](../../docs/realtime-catch-up.md).
+
+One follow-up remains from the idempotency work: an automatic retry after a lost response is still a human decision. The composer keeps the text and the id, but never resends on its own; a queue or offline send would be the next design. See [docs/realtime-idempotency.md](../../docs/realtime-idempotency.md).
 
 ## Remaining risk
 

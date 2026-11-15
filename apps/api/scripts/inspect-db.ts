@@ -119,3 +119,23 @@ print(
   "message events",
   db.query("SELECT message_id, type FROM message_events ORDER BY message_id").all(),
 );
+
+if (tables.some((table) => table.name === "command_requests")) {
+  print(
+    "command requests",
+    db
+      .query(`
+        SELECT
+          r.id,
+          c.name AS conversation,
+          u.handle AS author,
+          substr(r.message_id, 1, 8) AS message,
+          r.created_at
+        FROM command_requests r
+        JOIN conversations c ON c.id = r.conversation_id
+        JOIN users u ON u.id = r.author_id
+        ORDER BY r.created_at, r.id
+      `)
+      .all(),
+  );
+}

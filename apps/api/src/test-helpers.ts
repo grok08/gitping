@@ -3,6 +3,8 @@ import { createApp } from "./app";
 import { initializeDatabase, openDatabase } from "./db";
 import type { RealtimeEvent, RealtimePublisher } from "./realtime/events";
 import { createBranchRepository } from "./repositories/branch-repository";
+import type { CommandRequestRepository } from "./repositories/command-request-repository";
+import { createCommandRequestRepository } from "./repositories/command-request-repository";
 import { createConversationRepository } from "./repositories/conversation-repository";
 import { createMessageRepository } from "./repositories/message-repository";
 import { createUserRepository } from "./repositories/user-repository";
@@ -38,7 +40,10 @@ export function createTestPublisher() {
   } satisfies RealtimePublisher & { events: RealtimeEvent[] };
 }
 
-export function createTestCommandService(db: Database = createTestDatabase()) {
+export function createTestCommandService(
+  db: Database = createTestDatabase(),
+  options: { requests?: CommandRequestRepository } = {},
+) {
   const messages = createMessageRepository(db);
   const events = createTestPublisher();
 
@@ -53,6 +58,7 @@ export function createTestCommandService(db: Database = createTestDatabase()) {
       users: createUserRepository(db),
       conversations: createConversationRepository(db),
       branches: createBranchRepository(db),
+      requests: options.requests ?? createCommandRequestRepository(db),
     }),
   };
 }

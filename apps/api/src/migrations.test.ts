@@ -26,7 +26,7 @@ describe("migrations", () => {
 
     initializeDatabase(db);
 
-    expect(schemaVersion(db)).toBe(1);
+    expect(schemaVersion(db)).toBe(2);
 
     const tables = tableNames(db);
 
@@ -43,6 +43,31 @@ describe("migrations", () => {
     }
   });
 
+  test("creates the command request table at version 2", () => {
+    const db = openDatabase(":memory:");
+
+    initializeDatabase(db);
+
+    expect(schemaVersion(db)).toBe(2);
+    expect(tableNames(db)).toContain("command_requests");
+
+    const columns = db.query("PRAGMA table_info(command_requests)").all() as Array<{
+      name: string;
+      pk: number;
+    }>;
+
+    expect(columns.map((column) => column.name)).toEqual([
+      "id",
+      "conversation_id",
+      "message_id",
+      "author_id",
+      "created_at",
+    ]);
+    expect(
+      columns.filter((column) => column.pk === 1).map((column) => column.name),
+    ).toEqual(["id"]);
+  });
+
   test("seeds the workspace once even when initialized twice", () => {
     const db = openDatabase(":memory:");
 
@@ -53,6 +78,29 @@ describe("migrations", () => {
     expect(count(db, "conversations")).toBe(6);
     expect(count(db, "conversation_members")).toBe(20);
     expect(count(db, "branches")).toBe(8);
+  });
+
+  test("upgrades a version 1 database in place", () => {
+    const db = openDatabase(":memory:");
+
+    initializeDatabase(db);
+
+    // Rebuild the version 1 state: its schema and seed data, before
+    // `command_requests` existed.
+    db.run("DROP TABLE command_requests");
+    db.run("PRAGMA user_version = 1");
+
+    expect(schemaVersion(db)).toBe(1);
+    expect(tableNames(db)).not.toContain("command_requests");
+
+    initializeDatabase(db);
+
+    expect(schemaVersion(db)).toBe(2);
+    expect(tableNames(db)).toContain("command_requests");
+    expect(count(db, "users")).toBe(4);
+    expect(count(db, "conversations")).toBe(6);
+    expect(count(db, "branches")).toBe(8);
+    expect(count(db, "command_requests")).toBe(0);
   });
 
   test("backfills a legacy messages table into the domain model", () => {
@@ -94,7 +142,7 @@ describe("migrations", () => {
 
     initializeDatabase(db);
 
-    expect(schemaVersion(db)).toBe(1);
+    expect(schemaVersion(db)).toBe(2);
     expect(tableNames(db)).not.toContain("messages_legacy");
 
     const messages = createMessageRepository(db).list();
@@ -150,6 +198,6 @@ describe("migrations", () => {
     initializeDatabase(db);
 
     expect(count(db, "conversations")).toBe(conversationsAfterFirst);
-    expect(schemaVersion(db)).toBe(1);
+    expect(schemaVersion(db)).toBe(2);
   });
 });

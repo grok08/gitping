@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { currentUserHandle } from "../current-user";
+import { checkRequestId, requestIdError } from "./request-id";
 import type { CommandService } from "../services/command-service";
 import type { CommandRequest } from "../types/http";
 
@@ -22,13 +23,26 @@ export function createCommandRoutes(commands: CommandService) {
       return c.json({ error: "Command is required" }, 400);
     }
 
+    const requestId = checkRequestId(body.requestId);
+
+    if (!requestId.ok) {
+      return c.json({ error: requestIdError }, 400);
+    }
+
     const result = commands.send(input, author, {
       conversation: body.conversation,
       branch: body.branch,
+      requestId: requestId.requestId,
     });
 
     if (!result.ok) {
-      return c.json({ error: result.error }, 400);
+      const status = result.reason === "request_conflict" ? 409 : 400;
+
+      return c.json({ error: result.error }, status);
+    }
+
+    if (result.replayed) {
+      c.header("Idempotent-Replay", "true");
     }
 
     return c.json({ message: result.message }, 201);

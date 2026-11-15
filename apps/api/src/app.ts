@@ -6,6 +6,7 @@ import { createMessageHub } from "./realtime/hub";
 import type { MessageHub } from "./realtime/hub";
 import { createRealtimeRoutes } from "./realtime/websocket";
 import { createBranchRepository } from "./repositories/branch-repository";
+import { createCommandRequestRepository } from "./repositories/command-request-repository";
 import { createConversationRepository } from "./repositories/conversation-repository";
 import { createMessageRepository } from "./repositories/message-repository";
 import { createUserRepository } from "./repositories/user-repository";
@@ -31,6 +32,7 @@ export function createApp(
     conversations,
     branches,
     messages,
+    requests: createCommandRequestRepository(db),
     events: hub,
   });
 

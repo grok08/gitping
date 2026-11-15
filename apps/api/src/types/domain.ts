@@ -64,6 +64,19 @@ export type MessageEvent = {
   createdAt: string;
 };
 
+/**
+ * One row per client-named command. It is the mapping from the id a client
+ * chose for one intent to the message that intent produced, so a retry after a
+ * lost response resolves to the existing row instead of writing a second one.
+ */
+export type CommandRequestRecord = {
+  id: string;
+  conversationId: string;
+  messageId: string;
+  authorId: string;
+  createdAt: string;
+};
+
 export type NewConversation = {
   id: string;
   name: string;

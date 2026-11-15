@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { currentUserHandle } from "../current-user";
+import { checkRequestId, requestIdError } from "./request-id";
 import type { CommandService } from "../services/command-service";
 import type { ConversationService } from "../services/conversation-service";
 import type {
@@ -66,15 +67,30 @@ export function createConversationRoutes(
       return c.json({ error: "Command is required" }, 400);
     }
 
+    const requestId = checkRequestId(body.requestId);
+
+    if (!requestId.ok) {
+      return c.json({ error: requestIdError }, 400);
+    }
+
     const result = commands.send(input, currentUserHandle, {
       conversationId: c.req.param("id"),
       branch: body.branch,
+      requestId: requestId.requestId,
     });
 
     if (!result.ok) {
+      if (result.reason === "request_conflict") {
+        return c.json({ error: result.error }, 409);
+      }
+
       const status = result.reason === "unknown_conversation" ? 404 : 400;
 
       return c.json({ error: result.error }, status);
+    }
+
+    if (result.replayed) {
+      c.header("Idempotent-Replay", "true");
     }
 
     return c.json({ message: result.message }, 201);

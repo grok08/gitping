@@ -34,7 +34,7 @@ describe("HTTP API", () => {
     expect(await response.json()).toEqual({
       status: "ok",
       database: true,
-      schemaVersion: 1,
+      schemaVersion: 2,
     });
   });
 
@@ -395,6 +395,122 @@ describe("conversation HTTP API", () => {
         error: "Unknown conversation: conv-missing",
       });
     }
+  });
+});
+
+describe("idempotent command HTTP API", () => {
+  const requestIdError =
+    "requestId must be 8 to 64 characters of A-Z, a-z, 0-9, _ or -";
+
+  test("returns the same message and marks the replay for one request id", async () => {
+    const app = createTestApp();
+    const body = JSON.stringify({
+      input: 'git commit -m "lost response"',
+      branch: "main",
+      requestId: "request-http-1",
+    });
+
+    const first = await postConversationCommand(app, "conv-engineering", body);
+
+    expect(first.status).toBe(201);
+    expect(first.headers.get("Idempotent-Replay")).toBeNull();
+
+    const firstBody = (await first.json()) as { message: { id: string } };
+
+    const second = await postConversationCommand(app, "conv-engineering", body);
+
+    expect(second.status).toBe(201);
+    expect(second.headers.get("Idempotent-Replay")).toBe("true");
+
+    const secondBody = (await second.json()) as { message: { id: string } };
+
+    expect(secondBody.message.id).toBe(firstBody.message.id);
+
+    const listed = (await (await app.request("/messages")).json()) as Array<
+      Record<string, unknown>
+    >;
+
+    expect(listed).toHaveLength(1);
+  });
+
+  test("accepts a request id on the compatibility command route", async () => {
+    const app = createTestApp();
+    const body = JSON.stringify({
+      input: 'git commit -m "compat retry"',
+      requestId: "request-http-2",
+    });
+
+    const first = await postCommand(app, body);
+    const second = await postCommand(app, body);
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(second.headers.get("Idempotent-Replay")).toBe("true");
+
+    const firstBody = (await first.json()) as { message: { id: string } };
+    const secondBody = (await second.json()) as { message: { id: string } };
+
+    expect(secondBody.message.id).toBe(firstBody.message.id);
+  });
+
+  test("rejects a request id that is not 8 to 64 safe characters", async () => {
+    const app = createTestApp();
+
+    for (const requestId of ["short", "has spaces", "x".repeat(65), 42, ""]) {
+      const response = await postConversationCommand(
+        app,
+        "conv-engineering",
+        JSON.stringify({
+          input: 'git commit -m "malformed id"',
+          requestId,
+        }),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: requestIdError });
+    }
+
+    const compatibility = await postCommand(
+      app,
+      JSON.stringify({
+        input: 'git commit -m "malformed id"',
+        requestId: "bad!id",
+      }),
+    );
+
+    expect(compatibility.status).toBe(400);
+    expect(await compatibility.json()).toEqual({ error: requestIdError });
+
+    const listed = (await (await app.request("/messages")).json()) as unknown[];
+
+    expect(listed).toHaveLength(0);
+  });
+
+  test("rejects a request id already used for another command with 409", async () => {
+    const app = createTestApp();
+
+    await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({
+        input: 'git commit -m "engineering note"',
+        requestId: "request-http-3",
+      }),
+    );
+
+    const conflict = await postConversationCommand(
+      app,
+      "conv-weekend",
+      JSON.stringify({
+        input: 'git commit -m "weekend note"',
+        requestId: "request-http-3",
+      }),
+    );
+
+    expect(conflict.status).toBe(409);
+    expect(await conflict.json()).toEqual({
+      error: "Request id already used for another command",
+    });
   });
 });
 
