@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ChatPage } from "./features/chat/ChatPage";
 import { ConversationSidebar } from "./features/conversations/ConversationSidebar";
+import { SearchPalette } from "./features/search/SearchPalette";
 import { IconRail } from "./features/workspace/IconRail";
 import { WorkspaceModal } from "./features/workspace/WorkspaceModal";
 import { workspaceMembers } from "./data/seed";
 import { useConversationSocket } from "./hooks/useConversationSocket";
 import type { ConnectionStatus } from "./hooks/useConversationSocket";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useSearchRequest } from "./hooks/useSearchRequest";
 import { useSidebar } from "./hooks/useSidebar";
 import { useTheme } from "./hooks/useTheme";
 import { useTransientMessage } from "./hooks/useTransientMessage";
@@ -17,6 +19,7 @@ import {
   getConversationMembers,
   getConversationMessages,
   getConversations,
+  searchConversation,
   sendConversationCommand,
 } from "./lib/api";
 import { commandRequestId } from "./lib/commands";
@@ -29,7 +32,12 @@ import {
 } from "./lib/command-history";
 import type { HistoryStorage } from "./lib/command-history";
 import type { CommandContext } from "./lib/command-input";
-import { fromApiMessage, fromConfirmedMessage, mergeMessages } from "./lib/messages";
+import {
+  fromApiMessage,
+  fromConfirmedMessage,
+  fromSearchHit,
+  mergeMessages,
+} from "./lib/messages";
 import type {
   ApiBranch,
   ApiConversation,
@@ -93,6 +101,11 @@ function App() {
   const [input, setInput] = useState("");
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [connection, setConnection] = useState<ConnectionStatus>("connecting");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [focusedMessageId, setFocusedMessageId] = useState<string | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(
+    null,
+  );
 
   /**
    * The request id of the last failed send, kept so a retry of the same text
@@ -129,6 +142,9 @@ function App() {
   const chatSearchRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLInputElement>(null);
   const messageListRef = useRef<HTMLElement>(null);
+  // A jump to a message owns the scroll until it lands, so the usual
+  // scroll-to-bottom effect cannot pull the row back out of view.
+  const focusPending = useRef(false);
 
   const active = useMemo(
     () =>
@@ -237,23 +253,58 @@ function App() {
     },
   });
 
-  const filteredMessages = useMemo(() => {
-    // A stashed message is set aside, not deleted: history keeps it, and
-    // `git stash list` is how you look at it from the chat.
-    const visible = messages.filter((message) => !message.stashed);
-    const query = chatSearch.trim().toLowerCase();
+  const chatSearchActive = chatSearchOpen && chatSearch.trim() !== "";
+  const conversationSearch = useSearchRequest(
+    chatSearch,
+    chatSearchActive,
+    (query, signal) => searchConversation(activeId, query, signal),
+  );
 
-    if (!query) {
-      return visible;
+  const searchMessages = useMemo(
+    () =>
+      conversationSearch.results?.messages.map((hit) => {
+        const message = fromSearchHit(hit);
+
+        // Only a hit from another branch needs to say so. A label on every
+        // row inside one branch is noise.
+        return hit.branch.name === branch
+          ? { ...message, branchName: undefined }
+          : message;
+      }) ?? [],
+    [branch, conversationSearch.results],
+  );
+
+  const displayMessages = useMemo(() => {
+    if (chatSearchActive) {
+      return searchMessages;
     }
 
-    return visible.filter(
-      (message) =>
-        message.text.toLowerCase().includes(query) ||
-        message.author.toLowerCase().includes(query) ||
-        message.id.toLowerCase().includes(query),
-    );
-  }, [messages, chatSearch]);
+    // A jump from search is a deliberate visit to a known row, so it shows the
+    // row even when the row is stashed and normally set aside.
+    if (focusedMessageId) {
+      return messages;
+    }
+
+    // A stashed message is set aside, not deleted: history keeps it, and
+    // `git stash list` is how you look at it from the chat.
+    return messages.filter((message) => !message.stashed);
+  }, [chatSearchActive, focusedMessageId, messages, searchMessages]);
+
+  useEffect(() => {
+    if (!focusedMessageId) {
+      return;
+    }
+
+    if (!messages.some((message) => message.id === focusedMessageId)) {
+      return;
+    }
+
+    focusPending.current = false;
+
+    document
+      .getElementById(`message-${focusedMessageId}`)
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [focusedMessageId, messages]);
 
   function closeFloatingMenus() {
     setActiveMenu(null);
@@ -264,25 +315,24 @@ function App() {
     setPanel(null);
     setPanelClosing(false);
     setChatSearchOpen(false);
+    setPaletteOpen(false);
+    setFocusedMessageId(null);
+    setHighlightedMessageId(null);
+    focusPending.current = false;
     setModal(null);
     setModalClosing(false);
     setError("");
     setGlobalSearch("");
   }
 
-  useKeyboardShortcuts({
-    openGlobalSearch() {
-      setSidebarOpen(true);
-      setActiveMenu(null);
-      setPanel(null);
-      setPanelClosing(false);
-      setChatSearchOpen(false);
+  function openSearchPalette() {
+    closeFloatingMenus();
+    closePanels(true);
+    setPaletteOpen(true);
+  }
 
-      requestAnimationFrame(() => {
-        globalSearchRef.current?.focus();
-        globalSearchRef.current?.select();
-      });
-    },
+  useKeyboardShortcuts({
+    openSearchPalette,
     dismissOverlays,
   });
 
@@ -377,6 +427,10 @@ function App() {
   }, [activeId, setToast]);
 
   useEffect(() => {
+    if (focusPending.current) {
+      return;
+    }
+
     const messageList = messageListRef.current;
 
     if (messageList) {
@@ -457,6 +511,9 @@ function App() {
     activeIdRef.current = id;
     setActiveConversationId(id);
     setBranch("main");
+    setFocusedMessageId(null);
+    setHighlightedMessageId(null);
+    focusPending.current = false;
 
     if (window.matchMedia("(max-width: 760px)").matches) {
       setSidebarOpen(false);
@@ -478,6 +535,9 @@ function App() {
 
   function selectBranch(next: string) {
     setBranch(next);
+    setFocusedMessageId(null);
+    setHighlightedMessageId(null);
+    focusPending.current = false;
     closeFloatingMenus();
     setBranchNotice(next);
   }
@@ -551,6 +611,11 @@ function App() {
       }
 
       setFailedRequest(null);
+      // A send is the member moving on, so the previous jump lets go of the
+      // scroll and the new message can arrive at the bottom.
+      setFocusedMessageId(null);
+      setHighlightedMessageId(null);
+      focusPending.current = false;
       // Clear only the text that was sent. A response can land while the next
       // command is already typed, and that draft belongs to the user, not to
       // this response.
@@ -677,10 +742,14 @@ function App() {
 
       <ChatPage
         conversation={active}
-        messages={filteredMessages}
+        messages={displayMessages}
         loading={loadingMessages}
-        searching={chatSearch.trim() !== ""}
-        searchResultCount={filteredMessages.length}
+        searching={chatSearchActive}
+        searchResultCount={conversationSearch.results?.total ?? 0}
+        searchError={
+          conversationSearch.status === "error" ? conversationSearch.error : ""
+        }
+        highlightedMessageId={highlightedMessageId}
         error={error}
         branchNotice={branchNotice}
         stashNotice={stashNoticeMessage}
@@ -730,6 +799,34 @@ function App() {
           setPanelClosing(false);
         }}
       />
+
+      {paletteOpen && (
+        <SearchPalette
+          onClose={() => setPaletteOpen(false)}
+          onOpenConversation={(id) => {
+            setPaletteOpen(false);
+            selectConversation(id);
+          }}
+          onOpenPerson={(handle) => {
+            setPaletteOpen(false);
+            setNewConversationName(handle);
+            openModal("direct");
+          }}
+          onOpenBranch={(conversationId, name) => {
+            setPaletteOpen(false);
+            selectConversation(conversationId);
+            selectBranch(name);
+          }}
+          onOpenMessage={(conversationId, messageId) => {
+            setPaletteOpen(false);
+            selectConversation(conversationId);
+            focusPending.current = true;
+            setFocusedMessageId(messageId);
+            setHighlightedMessageId(messageId);
+            window.setTimeout(() => setHighlightedMessageId(null), 1600);
+          }}
+        />
+      )}
 
       {modal && (
         <WorkspaceModal

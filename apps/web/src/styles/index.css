@@ -4,6 +4,7 @@
 @import "../features/conversations/conversations.css";
 @import "../features/chat/chat.css";
 @import "../features/branch/branch.css";
+@import "../features/search/search.css";
 @import "../components/ui/overlays.css";
 @import "../features/workspace/modal.css";
 @import "./responsive.css";

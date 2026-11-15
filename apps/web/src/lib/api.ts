@@ -6,6 +6,10 @@ import type {
   ConversationKind,
 } from "../types/conversation";
 import type { ApiMessage, CreatedMessage } from "../types/message";
+import type {
+  ConversationSearchResults,
+  WorkspaceSearchResults,
+} from "../types/search";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 const WS_URL = import.meta.env.VITE_WS_URL ?? API_URL.replace(/^http/, "ws");
@@ -124,6 +128,40 @@ export async function getConversationStashes(
   );
 
   return readJson<ApiStash[]>(response, "Unable to load stashes");
+}
+
+/**
+ * Every search goes through the server. `encodeURIComponent` rather than
+ * `URLSearchParams`, so a space is `%20` and never an ambiguous `+`.
+ */
+export async function searchWorkspace(
+  query: string,
+  signal?: AbortSignal,
+): Promise<WorkspaceSearchResults> {
+  const response = await fetch(
+    `${API_URL}/search?q=${encodeURIComponent(query)}`,
+    { signal },
+  );
+
+  return readJson<WorkspaceSearchResults>(response, "Unable to search");
+}
+
+export async function searchConversation(
+  conversationId: string,
+  query: string,
+  signal?: AbortSignal,
+): Promise<ConversationSearchResults> {
+  const response = await fetch(
+    `${API_URL}/conversations/${encodeURIComponent(
+      conversationId,
+    )}/search?q=${encodeURIComponent(query)}`,
+    { signal },
+  );
+
+  return readJson<ConversationSearchResults>(
+    response,
+    "Unable to search this conversation",
+  );
 }
 
 export async function sendConversationCommand(

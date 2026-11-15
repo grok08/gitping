@@ -3,6 +3,7 @@ import type {
   CreatedMessage,
   Message,
 } from "../types/message";
+import type { SearchMessageHit } from "../types/search";
 import { formatTime } from "./format";
 
 function buildMessage(payload: CreatedMessage): Message {
@@ -35,6 +36,26 @@ export function fromApiMessage(message: ApiMessage): Message {
 
 export function fromConfirmedMessage(message: CreatedMessage): Message {
   return buildMessage(message);
+}
+
+/**
+ * A search hit is the same row the chat renders, plus the branch it lives on,
+ * so a hit from another branch can say where it came from.
+ */
+export function fromSearchHit(hit: SearchMessageHit): Message {
+  return {
+    ...buildMessage({
+      seq: hit.seq,
+      id: hit.id,
+      author: hit.author,
+      text: hit.text,
+      command: hit.command,
+      createdAt: hit.createdAt,
+      reverted: hit.reverted,
+      stashed: hit.stashed,
+    }),
+    branchName: hit.branch.name,
+  };
 }
 
 /**

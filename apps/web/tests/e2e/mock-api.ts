@@ -124,6 +124,165 @@ function parseCommitText(input: string): string {
   return match?.[1] ?? input;
 }
 
+function branchNameFor(
+  state: MockState,
+  conversationId: string,
+  branchId: string,
+): string {
+  return (
+    state.branches
+      .get(conversationId)
+      ?.find((branch) => branch.id === branchId)?.name ?? "main"
+  );
+}
+
+/**
+ * The mock understands the text part of a query and ignores filters. Filter
+ * behavior is proven against the real API, not here.
+ */
+function searchTerms(query: string): string[] {
+  return query
+    .split(/\s+/)
+    .filter((token) => !/^(author|command|branch|after|before):/i.test(token))
+    .map((token) => token.toLowerCase())
+    .filter(Boolean);
+}
+
+function matchesTerms(text: string, terms: readonly string[]): boolean {
+  const lower = text.toLowerCase();
+
+  return terms.every((term) => lower.includes(term));
+}
+
+function messageHits(
+  state: MockState,
+  terms: readonly string[],
+  onlyConversationId?: string,
+) {
+  const hits: Array<Record<string, unknown>> = [];
+
+  for (const conversation of state.conversations) {
+    if (onlyConversationId && conversation.id !== onlyConversationId) {
+      continue;
+    }
+
+    for (const message of state.messages.get(conversation.id) ?? []) {
+      if (!matchesTerms(message.text, terms)) {
+        continue;
+      }
+
+      hits.push({
+        id: message.id,
+        seq: message.seq,
+        text: message.text,
+        snippet: message.text,
+        author: message.author,
+        command: message.command,
+        createdAt: message.created_at,
+        reverted: message.reverted,
+        stashed: message.stashed,
+        branch: {
+          id: message.branchId,
+          name: branchNameFor(state, conversation.id, message.branchId),
+        },
+        conversation: {
+          id: conversation.id,
+          name: conversation.name,
+          kind: conversation.kind,
+        },
+      });
+    }
+  }
+
+  return hits.sort(
+    (left, right) => (right.seq as number) - (left.seq as number),
+  );
+}
+
+function parsedQuery(terms: readonly string[]) {
+  return {
+    text: terms.join(" "),
+    terms,
+    filters: {
+      author: null,
+      command: null,
+      branch: null,
+      after: null,
+      before: null,
+    },
+  };
+}
+
+function searchWorkspaceFixture(state: MockState, url: string) {
+  const terms = searchTerms(new URL(url).searchParams.get("q") ?? "");
+  const messages = messageHits(state, terms);
+  const conversations =
+    terms.length === 0
+      ? []
+      : state.conversations.filter(
+          (conversation) =>
+            matchesTerms(conversation.name, terms) ||
+            (conversation.preview !== null &&
+              matchesTerms(conversation.preview, terms)),
+        );
+  const people =
+    terms.length === 0
+      ? []
+      : users.filter(
+          (user) =>
+            matchesTerms(user.handle, terms) ||
+            matchesTerms(user.displayName, terms),
+        );
+  const branches =
+    terms.length === 0
+      ? []
+      : state.conversations.flatMap((conversation) =>
+          (state.branches.get(conversation.id) ?? [])
+            .filter((branch) => matchesTerms(branch.name, terms))
+            .map((branch) => ({
+              id: branch.id,
+              name: branch.name,
+              conversationId: conversation.id,
+              conversationName: conversation.name,
+              conversationKind: conversation.kind,
+              current: branch.current,
+            })),
+        );
+
+  return {
+    query: parsedQuery(terms),
+    groups: { conversations, users: people, branches, messages },
+    totals: {
+      conversations: conversations.length,
+      users: people.length,
+      branches: branches.length,
+      messages: messages.length,
+    },
+    truncated: {
+      conversations: false,
+      users: false,
+      branches: false,
+      messages: false,
+    },
+  };
+}
+
+function searchConversationFixture(
+  state: MockState,
+  conversationId: string,
+  url: string,
+) {
+  const terms = searchTerms(new URL(url).searchParams.get("q") ?? "");
+  const messages = messageHits(state, terms, conversationId);
+
+  return {
+    query: parsedQuery(terms),
+    messages,
+    total: messages.length,
+    truncated: false,
+  };
+}
+
 function stashRecords(
   state: MockState,
   conversationId: string,
@@ -241,8 +400,13 @@ export async function openApp(
 
     const { pathname } = new URL(request.url());
     const nested = pathname.match(
-      /^\/conversations\/([^/]+)\/(messages|commands|members|branches|stashes)$/,
+      /^\/conversations\/([^/]+)\/(messages|commands|members|branches|stashes|search)$/,
     );
+
+    if (request.method() === "GET" && pathname === "/search") {
+      await json(200, searchWorkspaceFixture(state, request.url()));
+      return;
+    }
 
     if (request.method() === "GET" && pathname === "/conversations") {
       await json(200, state.conversations);
@@ -305,6 +469,14 @@ export async function openApp(
 
     if (!conversation) {
       await json(404, { error: `Unknown conversation: ${conversationId}` });
+      return;
+    }
+
+    if (request.method() === "GET" && resource === "search") {
+      await json(
+        200,
+        searchConversationFixture(state, conversationId, request.url()),
+      );
       return;
     }
 

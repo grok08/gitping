@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 export type ShortcutHandlers = {
-  openGlobalSearch: () => void;
+  openSearchPalette: () => void;
   dismissOverlays: () => void;
 };
 
@@ -18,7 +18,7 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
 
       if ((event.ctrlKey || event.metaKey) && key === "k") {
         event.preventDefault();
-        latestHandlers.current.openGlobalSearch();
+        latestHandlers.current.openSearchPalette();
         return;
       }
 

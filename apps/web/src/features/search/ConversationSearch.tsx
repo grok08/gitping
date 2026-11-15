@@ -5,6 +5,7 @@ type ChatSearchBarProps = {
   conversationName: string;
   query: string;
   resultCount: number;
+  error?: string;
   inputRef: RefObject<HTMLInputElement | null>;
   onChange: (value: string) => void;
   onClose: () => void;
@@ -14,6 +15,7 @@ export function ConversationSearch({
   conversationName,
   query,
   resultCount,
+  error = "",
   inputRef,
   onChange,
   onClose,
@@ -28,12 +30,19 @@ export function ConversationSearch({
           value={query}
           onChange={(event) => onChange(event.target.value)}
           placeholder={`Search in #${conversationName}`}
+          aria-invalid={error ? true : undefined}
         />
 
-        {query && (
-          <span className="chat-search-count">
-            {resultCount} {resultCount === 1 ? "result" : "results"}
+        {error ? (
+          <span className="chat-search-error" role="alert">
+            {error}
           </span>
+        ) : (
+          query && (
+            <span className="chat-search-count">
+              {resultCount} {resultCount === 1 ? "result" : "results"}
+            </span>
+          )
         )}
 
         <button type="button" onClick={onClose} aria-label="Close conversation search">

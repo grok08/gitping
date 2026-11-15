@@ -164,6 +164,15 @@
   white-space: nowrap;
 }
 
+.chat-search-error {
+  max-width: 45%;
+  overflow: hidden;
+  color: var(--danger);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chat-search-inner > button {
   width: 28px;
   height: 28px;
@@ -359,6 +368,40 @@
   color: var(--danger);
   font-family: "IBM Plex Mono", monospace;
   font-size: 9px;
+}
+
+.branch-pill,
+.stash-pill {
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 5px;
+  color: var(--text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9px;
+}
+
+.stash-pill {
+  border-color: color-mix(in srgb, var(--warning) 32%, var(--border));
+  color: var(--warning);
+}
+
+/**
+ * A jump from search marks the row it landed on, then fades, so the eye can
+ * find the row in a long conversation without leaving permanent decoration.
+ */
+.message-row.is-highlighted {
+  animation: message-highlight 1600ms var(--ease-out);
+}
+
+@keyframes message-highlight {
+  0%,
+  45% {
+    background: var(--accent-soft);
+  }
+
+  100% {
+    background: transparent;
+  }
 }
 
 .message-copy {

@@ -20,6 +20,8 @@ type ChatPageProps = {
   loading: boolean;
   searching: boolean;
   searchResultCount: number;
+  searchError: string;
+  highlightedMessageId: string | null;
   error: string;
   branchNotice: string;
   stashNotice: string;
@@ -67,6 +69,8 @@ export function ChatPage({
   loading,
   searching,
   searchResultCount,
+  searchError,
+  highlightedMessageId,
   error,
   branchNotice,
   stashNotice,
@@ -139,6 +143,7 @@ export function ChatPage({
           conversationName={conversation?.name ?? ""}
           query={searchQuery}
           resultCount={searchResultCount}
+          error={searchError}
           inputRef={searchInputRef}
           onChange={onSearchChange}
           onClose={onCloseSearch}
@@ -149,6 +154,7 @@ export function ChatPage({
         messages={messages}
         loading={loading}
         searching={searching}
+        highlightedMessageId={highlightedMessageId}
         listRef={messageListRef}
         onCopyCommand={onCopyCommand}
       />

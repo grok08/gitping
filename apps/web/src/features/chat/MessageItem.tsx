@@ -4,15 +4,28 @@ import type { Message } from "../../types/message";
 
 type MessageItemProps = {
   message: Message;
+  highlighted?: boolean;
   onCopyCommand: (command: string) => void;
 };
 
-export function MessageItem({ message, onCopyCommand }: MessageItemProps) {
+export function MessageItem({
+  message,
+  highlighted = false,
+  onCopyCommand,
+}: MessageItemProps) {
   const [, verb = "commit"] = message.command.split(" ");
+  const className = [
+    "message-row",
+    message.reverted ? "reverted" : "",
+    highlighted ? "is-highlighted" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <article
-      className={message.reverted ? "message-row reverted" : "message-row"}
+      id={`message-${message.id}`}
+      className={className}
       aria-label={message.reverted ? "Reverted message" : undefined}
     >
       <Avatar label={message.avatar} mine={message.mine} />
@@ -43,7 +56,13 @@ export function MessageItem({ message, onCopyCommand }: MessageItemProps) {
         <div className="message-footer">
           <span className="commit-pill">{verb}</span>
 
+          {message.branchName && (
+            <span className="branch-pill">{message.branchName}</span>
+          )}
+
           {message.reverted && <span className="revert-pill">reverted</span>}
+
+          {message.stashed && <span className="stash-pill">stashed</span>}
 
           <span className="commit-id">{message.id.slice(0, 8)}</span>
         </div>

@@ -10,6 +10,8 @@ export type Message = {
   /** State derived by the server from the message's events. */
   reverted: boolean;
   stashed: boolean;
+  /** Set on a search hit from another branch, so the row can say where it lives. */
+  branchName?: string;
 };
 
 export type ApiMessage = {

@@ -81,6 +81,23 @@ test("mobile drawer open", async ({ page }) => {
   await capture(page, "mobile-drawer");
 });
 
+test("search palette idle", async ({ page }) => {
+  await openApp(page, { width: 1280, height: 800 });
+  await page.keyboard.press("Control+k");
+  await expect(page.locator(".search-palette")).toBeVisible();
+
+  await capture(page, "search-palette-idle");
+});
+
+test("search palette with results", async ({ page }) => {
+  await openApp(page, { width: 1280, height: 800 });
+  await page.keyboard.press("Control+k");
+  await page.locator(".search-palette input").fill("Ready");
+  await expect(page.locator(".search-hit").first()).toBeVisible();
+
+  await capture(page, "search-palette-results");
+});
+
 test("branch switch notice", async ({ page }) => {
   await openApp(page, { width: 1280, height: 800 });
   await page.locator(".branch-button").click();

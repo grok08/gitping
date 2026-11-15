@@ -6,6 +6,7 @@ type MessageListProps = {
   messages: Message[];
   loading: boolean;
   searching: boolean;
+  highlightedMessageId?: string | null;
   listRef: RefObject<HTMLElement | null>;
   onCopyCommand: (command: string) => void;
 };
@@ -14,6 +15,7 @@ export function MessageList({
   messages,
   loading,
   searching,
+  highlightedMessageId = null,
   listRef,
   onCopyCommand,
 }: MessageListProps) {
@@ -33,6 +35,7 @@ export function MessageList({
             <MessageItem
               key={message.id}
               message={message}
+              highlighted={message.id === highlightedMessageId}
               onCopyCommand={onCopyCommand}
             />
           ))
