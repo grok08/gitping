@@ -475,6 +475,8 @@ Two designs are written down but not implemented, because this deployment does n
 - [docs/realtime-outbox.md](docs/realtime-outbox.md): a transactional outbox, so a crash between the commit and the broadcast cannot leave a pushed message behind.
 - [docs/realtime-catch-up.md](docs/realtime-catch-up.md): an `after=<seq>` catch-up, so a reconnect does not refetch the whole conversation.
 
+One design is approved for implementation: [docs/realtime-idempotency.md](docs/realtime-idempotency.md). A client-named `requestId` lets a retry after a lost response resolve to the message that already exists instead of creating a second one.
+
 ---
 
 ## Database
