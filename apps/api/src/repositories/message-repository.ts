@@ -30,13 +30,20 @@ function toMessageRow(row: RawMessageRow): MessageRow {
  * the events were written in. One definition is used for the selected column
  * and for the "not stashed" filter, so the two cannot disagree.
  */
-const stashedExpression = `
+export const stashedExpression = `
   EXISTS (
     SELECT 1 FROM message_events e
     WHERE e.message_id = m.id AND e.type = 'stashed'
   ) AND NOT EXISTS (
     SELECT 1 FROM message_events e
     WHERE e.message_id = m.id AND e.type = 'unstashed'
+  )
+`;
+
+export const revertedExpression = `
+  EXISTS (
+    SELECT 1 FROM message_events e
+    WHERE e.message_id = m.id AND e.type = 'reverted'
   )
 `;
 
@@ -48,10 +55,7 @@ const selectMessage = `
     m.text,
     'git ' || c.verb AS command,
     m.created_at,
-    EXISTS (
-      SELECT 1 FROM message_events e
-      WHERE e.message_id = m.id AND e.type = 'reverted'
-    ) AS reverted,
+    (${revertedExpression}) AS reverted,
     (${stashedExpression}) AS stashed
   FROM messages m
   JOIN users u ON u.id = m.author_id

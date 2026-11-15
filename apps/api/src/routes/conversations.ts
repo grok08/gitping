@@ -2,8 +2,10 @@ import { Hono } from "hono";
 import { currentUserHandle } from "../current-user";
 import { checkRequestId, requestIdError } from "./request-id";
 import { sendCommandResponse } from "./command-response";
+import { sendSearchResponse } from "./search";
 import type { CommandService } from "../services/command-service";
 import type { ConversationService } from "../services/conversation-service";
+import type { SearchService } from "../services/search-service";
 import type {
   ConversationCommandRequest,
   CreateConversationRequest,
@@ -12,6 +14,7 @@ import type {
 export function createConversationRoutes(
   conversations: ConversationService,
   commands: CommandService,
+  search: SearchService,
 ) {
   const routes = new Hono();
 
@@ -112,6 +115,17 @@ export function createConversationRoutes(
 
     return c.json(result.value);
   });
+
+  routes.get("/conversations/:id/search", (c) =>
+    sendSearchResponse(
+      c,
+      search.conversation(
+        c.req.param("id"),
+        c.req.query("q"),
+        c.req.query("limit"),
+      ),
+    ),
+  );
 
   return routes;
 }

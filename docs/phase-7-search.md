@@ -21,6 +21,8 @@ The sidebar input stays. It is a fast local filter over conversation names and p
 
 Text matching is a case-insensitive substring, which is what both search boxes do today. `ogi` finds `login`. Nobody has to learn a tokenizer to find their own message.
 
+A query is split into terms, and every term has to appear somewhere in the matched column. `login flow` finds "flow of login", and `"login flow"` stays one term so it only finds the exact phrase. A quoted phrase keeps its spaces.
+
 | Group | Columns matched |
 | --- | --- |
 | conversations | `name`, `preview` |
@@ -38,9 +40,9 @@ Stashed and reverted messages are returned with their flags. Search is how a mem
 
 | Group | Order |
 | --- | --- |
-| conversations | name starts with the text, then name contains, then preview contains, then name ascending |
-| users | handle starts with the text, then contains, then handle ascending |
-| branches | name starts with the text, then contains, then conversation name ascending, then branch name ascending |
+| conversations | name starts with the first term, then name contains it, then the preview matches, then name ascending |
+| users | handle starts with the first term, then contains it, then handle ascending |
+| branches | name starts with the first term, then contains it, then conversation name ascending, then branch name ascending |
 | messages | `seq` descending, newest first |
 
 `limit` applies per group. Default 10, minimum 1, maximum 50. `totals` reports the full count per group before the limit, so the palette can say "23 messages" while showing 10, and `truncated` says whether the group was cut.
@@ -49,7 +51,7 @@ A message snippet is the message text when it is short. When it is long, the sni
 
 ## Query grammar
 
-A query is split on whitespace, and double quotes group words. A token is a filter when its prefix before the first `:` is one of the five known filter names. Any other token is text, so `note:` and `http://x` search as text instead of failing.
+A query is split on whitespace, and double quotes group words. A token is a filter when its prefix before the first `:` is one of the five known filter names. Any other token is a term, so `note:` and `http://x` search as text instead of failing. A quoted phrase is one term.
 
 | Filter | Value | Rule |
 | --- | --- | --- |
@@ -73,7 +75,7 @@ At least one text token or filter is required. A blank query is a mistake, not a
 | query over 200 characters | `400 Search query is too long (200 characters maximum)` |
 | filter with no value | `400 author: needs a value` and the same for the others |
 | date that does not parse | `400 after: expects YYYY-MM-DD or an ISO timestamp` |
-| unknown command verb | `400 Unknown command: <value>. Supported: commit, revert, merge, branch, switch, stash.` |
+| unknown command verb | `400 Unknown command: <value>. Supported: commit, revert, merge, branch, switch, or stash.` |
 | `limit` out of range or not a whole number | `400 limit must be a whole number from 1 to 50` |
 | unknown conversation on the scoped route | `404 Unknown conversation: <id>` |
 
@@ -96,6 +98,7 @@ GET /conversations/:id/search?q=<query>&limit=<n>
 {
   "query": {
     "text": "login",
+    "terms": ["login"],
     "filters": {
       "author": "grok08",
       "command": null,
@@ -171,6 +174,7 @@ GET /conversations/:id/search?q=<query>&limit=<n>
 {
   "query": {
     "text": "login",
+    "terms": ["login"],
     "filters": {
       "author": null,
       "command": null,

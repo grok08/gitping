@@ -9,13 +9,16 @@ import { createBranchRepository } from "./repositories/branch-repository";
 import { createCommandRequestRepository } from "./repositories/command-request-repository";
 import { createConversationRepository } from "./repositories/conversation-repository";
 import { createMessageRepository } from "./repositories/message-repository";
+import { createSearchRepository } from "./repositories/search-repository";
 import { createUserRepository } from "./repositories/user-repository";
 import { createCommandService } from "./services/command-service";
 import { createConversationService } from "./services/conversation-service";
+import { createSearchService } from "./services/search-service";
 import { createCommandRoutes } from "./routes/commands";
 import { createConversationRoutes } from "./routes/conversations";
 import { createHealthRoutes } from "./routes/health";
 import { createMessageRoutes } from "./routes/messages";
+import { createSearchRoutes } from "./routes/search";
 
 export function createApp(
   db: Database,
@@ -44,6 +47,12 @@ export function createApp(
     messages,
   });
 
+  const searchService = createSearchService({
+    conversations,
+    users,
+    search: createSearchRepository(db),
+  });
+
   const app = new Hono();
 
   app.use(
@@ -58,7 +67,8 @@ export function createApp(
   app.route("/", createHealthRoutes(db));
   app.route("/", createMessageRoutes(messages));
   app.route("/", createCommandRoutes(commands));
-  app.route("/", createConversationRoutes(conversationService, commands));
+  app.route("/", createConversationRoutes(conversationService, commands, searchService));
+  app.route("/", createSearchRoutes(searchService));
   app.route("/", createRealtimeRoutes(hub, conversationService));
 
   return app;
