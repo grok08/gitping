@@ -2,6 +2,7 @@ import type {
   ApiBranch,
   ApiConversation,
   ApiMember,
+  ApiStash,
   ConversationKind,
 } from "../types/conversation";
 import type { ApiMessage, CreatedMessage } from "../types/message";
@@ -17,9 +18,14 @@ export function conversationEventsUrl(conversationId: string): string {
   return `${WS_URL}/conversations/${encodeURIComponent(conversationId)}/events`;
 }
 
-type CreateCommandResponse = {
-  message: CreatedMessage;
-};
+/**
+ * A command answers with one of three untagged bodies. The caller checks
+ * `message`, then `branches`, then `stashes`.
+ */
+export type CommandResponse =
+  | { message: CreatedMessage }
+  | { branches: ApiBranch[] }
+  | { stashes: ApiStash[] };
 
 type CreateConversationResponse = {
   conversation: ApiConversation;
@@ -110,12 +116,22 @@ export async function getConversationMembers(
   return readJson<ApiMember[]>(response, "Unable to load members");
 }
 
+export async function getConversationStashes(
+  conversationId: string,
+): Promise<ApiStash[]> {
+  const response = await fetch(
+    `${API_URL}/conversations/${encodeURIComponent(conversationId)}/stashes`,
+  );
+
+  return readJson<ApiStash[]>(response, "Unable to load stashes");
+}
+
 export async function sendConversationCommand(
   conversationId: string,
   input: string,
   branch: string,
   requestId: string,
-): Promise<CreatedMessage> {
+): Promise<CommandResponse> {
   const response = await fetch(
     `${API_URL}/conversations/${encodeURIComponent(conversationId)}/commands`,
     {
@@ -133,7 +149,5 @@ export async function sendConversationCommand(
     },
   );
 
-  const data = await readJson<CreateCommandResponse>(response, "Command failed");
-
-  return data.message;
+  return readJson<CommandResponse>(response, "Command failed");
 }

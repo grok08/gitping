@@ -20,6 +20,7 @@ type ChatPageProps = {
   searchResultCount: number;
   error: string;
   branchNotice: string;
+  stashNotice: string;
   sidebarOpen: boolean;
   branch: string;
   branches: string[];
@@ -63,6 +64,7 @@ export function ChatPage({
   searchResultCount,
   error,
   branchNotice,
+  stashNotice,
   sidebarOpen,
   branch,
   branches,
@@ -99,7 +101,11 @@ export function ChatPage({
 }: ChatPageProps) {
   return (
     <main className="chat-panel">
-      {branchNotice && <BranchNotification message={branchNotice} />}
+      {branchNotice ? (
+        <BranchNotification label="BRANCH" message={branchNotice} />
+      ) : stashNotice ? (
+        <BranchNotification label="STASH" message={stashNotice} />
+      ) : null}
 
       <ChatHeader
         conversation={conversation}

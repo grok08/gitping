@@ -24,6 +24,15 @@ export type ApiBranch = {
   id: string;
   name: string;
   headMessageId: string | null;
+  /** The member's current branch, which is what a reload restores. */
+  current: boolean;
+};
+
+export type ApiStash = {
+  id: string;
+  text: string;
+  note: string | null;
+  createdAt: string;
 };
 
 export type ApiMember = {

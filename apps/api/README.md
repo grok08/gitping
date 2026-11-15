@@ -39,7 +39,7 @@ Returns API and database health:
 
 ### `GET /messages`
 
-Returns persisted messages ordered chronologically. Each message includes `id`, `author`, `text`, `command`, and `created_at`.
+Returns persisted messages ordered chronologically. Each message includes `id`, `author`, `text`, `command`, `created_at`, `reverted`, and `stashed`.
 
 ### `POST /commands`
 
@@ -52,9 +52,13 @@ Request:
 }
 ```
 
-`author` is optional and defaults to `grok08`. The current message flow requires a `git commit -m "message"` command. Other commands may be recognized by the parser, but are not yet persisted as messages by this endpoint.
+`author` is optional and defaults to `grok08`. The response is one of three untagged bodies: `{ message }` for `git commit`, `git revert`, and `git merge` (`201`); `{ branches }` for `git branch` and `git switch` (`200`); `{ stashes }` for the `git stash` commands (`200`). Query commands such as `git log` are still rejected with `400`.
 
-Successful requests return `201 Created` with the new message, including its `createdAt` timestamp. Invalid JSON, unsupported commands, and commands without a commit message return `400 Bad Request` with an `error` field.
+Invalid JSON, unsupported commands, and commands without a commit message return `400 Bad Request` with an `error` field. A duplicate branch or an already reverted message returns `409`.
+
+### `GET /conversations/:id/stashes`
+
+Returns the stash of the current user's current branch as `{ id, text, note, createdAt }` records, newest first.
 
 ## Database
 

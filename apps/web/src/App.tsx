@@ -21,6 +21,7 @@ import {
 } from "./lib/api";
 import { commandRequestId } from "./lib/commands";
 import type { PendingCommand } from "./lib/commands";
+import { currentBranchName } from "./lib/branches";
 import { fromApiMessage, fromConfirmedMessage, mergeMessages } from "./lib/messages";
 import type {
   ApiBranch,
@@ -48,6 +49,16 @@ function toWorkspaceMember(member: ApiMember): WorkspaceMember {
     role: member.role,
     avatar: member.avatar,
   };
+}
+
+function stashNotice(input: string, count: number): string {
+  if (/^git\s+stash\s+pop\b/.test(input)) {
+    return "Restored from stash";
+  }
+
+  return count === 0
+    ? "No stashes"
+    : `${count} stashed ${count === 1 ? "message" : "messages"}`;
 }
 
 function App() {
@@ -89,6 +100,7 @@ function App() {
 
   const [toast, setToast] = useTransientMessage();
   const [branchNotice, setBranchNotice] = useTransientMessage();
+  const [stashNoticeMessage, setStashNotice] = useTransientMessage();
 
   const { theme, setTheme, toggleTheme } = useTheme();
   const { sidebarOpen, setSidebarOpen } = useSidebar();
@@ -181,13 +193,16 @@ function App() {
   });
 
   const filteredMessages = useMemo(() => {
+    // A stashed message is set aside, not deleted: history keeps it, and
+    // `git stash list` is how you look at it from the chat.
+    const visible = messages.filter((message) => !message.stashed);
     const query = chatSearch.trim().toLowerCase();
 
     if (!query) {
-      return messages;
+      return visible;
     }
 
-    return messages.filter(
+    return visible.filter(
       (message) =>
         message.text.toLowerCase().includes(query) ||
         message.author.toLowerCase().includes(query) ||
@@ -296,13 +311,7 @@ function App() {
         );
 
         setBranches(branchData);
-        setBranch((current) =>
-          branchData.some((item) => item.name === current)
-            ? current
-            : (branchData.find((item) => item.name === "main")?.name ??
-              branchData[0]?.name ??
-              "main"),
-        );
+        setBranch(currentBranchName(branchData));
         setConversationMembers(memberData.map(toWorkspaceMember));
       } catch {
         if (!cancelled) {
@@ -444,24 +453,40 @@ function App() {
     const request = commandRequestId(previous, value);
 
     try {
-      const message = await sendConversationCommand(
+      const result = await sendConversationCommand(
         activeId,
         value,
         branch,
         request.id,
       );
-      const confirmed = fromConfirmedMessage(message);
 
-      setMessages((current) => mergeMessages(current, [confirmed]));
-      advancePreview(activeId, confirmed.text, confirmed.seq);
+      if ("message" in result) {
+        const confirmed = fromConfirmedMessage(result.message);
 
-      setBranches((current) =>
-        current.map((item) =>
-          item.name === branch
-            ? { ...item, headMessageId: confirmed.id }
-            : item,
-        ),
-      );
+        setMessages((current) => mergeMessages(current, [confirmed]));
+        advancePreview(activeId, confirmed.text, confirmed.seq);
+
+        setBranches((current) =>
+          current.map((item) =>
+            item.name === branch
+              ? { ...item, headMessageId: confirmed.id }
+              : item,
+          ),
+        );
+      } else if ("branches" in result) {
+        // Branch context is server state, so the answer decides where the
+        // selector and the next command point.
+        const next = currentBranchName(result.branches);
+
+        if (next !== branch) {
+          setBranchNotice(next);
+        }
+
+        setBranches(result.branches);
+        setBranch(next);
+      } else {
+        setStashNotice(stashNotice(value, result.stashes.length));
+      }
 
       setFailedRequest(null);
       // Clear only the text that was sent. A response can land while the next
@@ -596,6 +621,7 @@ function App() {
         searchResultCount={filteredMessages.length}
         error={error}
         branchNotice={branchNotice}
+        stashNotice={stashNoticeMessage}
         sidebarOpen={sidebarOpen}
         branch={branch}
         branches={branches.map((item) => item.name)}

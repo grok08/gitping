@@ -1,0 +1,1141 @@
+$ bun run apps/api/scripts/inspect-db.ts "apps/web/test-results/gitping-e2e.db"
+database: apps/web/test-results/gitping-e2e.db
+schema version: 3
+
+## row counts
+branches: 20
+command_requests: 18
+conversation_members: 31
+conversations: 16
+git_commands: 18
+message_events: 22
+messages: 18
+users: 4
+
+## users
+[
+  {
+    "handle": "alice",
+    "display_name": "alice",
+    "role": "developer"
+  },
+  {
+    "handle": "grok08",
+    "display_name": "grok08",
+    "role": "owner"
+  },
+  {
+    "handle": "maria",
+    "display_name": "maria",
+    "role": "developer"
+  },
+  {
+    "handle": "rahul",
+    "display_name": "rahul",
+    "role": "developer"
+  }
+]
+
+## conversations
+[
+  {
+    "id": "conv-engineering",
+    "name": "engineering",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-general",
+    "name": "general",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-five-merge-mwhxi4k0",
+    "name": "phase-five-merge-mwhxi4k0",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-five-revert-mwhxi3b4",
+    "name": "phase-five-revert-mwhxi3b4",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-five-stash-mwhxi4lp",
+    "name": "phase-five-stash-mwhxi4lp",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-five-switch-mwhxi22y",
+    "name": "phase-five-switch-mwhxi22y",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-four-idempotent-mwhxi4m1",
+    "name": "phase-four-idempotent-mwhxi4m1",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-four-live-mwhxi4xc",
+    "name": "phase-four-live-mwhxi4xc",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-four-order-mwhxi6cn",
+    "name": "phase-four-order-mwhxi6cn",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-four-reconnect-mwhxi5ah",
+    "name": "phase-four-reconnect-mwhxi5ah",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-channel-phase-three-mwhxi2ez",
+    "name": "phase-three-mwhxi2ez",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-random",
+    "name": "random",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-weekend",
+    "name": "weekend",
+    "kind": "channel"
+  },
+  {
+    "id": "conv-alice",
+    "name": "alice",
+    "kind": "direct"
+  },
+  {
+    "id": "conv-direct-maria",
+    "name": "maria",
+    "kind": "direct"
+  },
+  {
+    "id": "conv-rahul",
+    "name": "rahul",
+    "kind": "direct"
+  }
+]
+
+## conversation members
+[
+  {
+    "conversation": "alice",
+    "member": "alice",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "alice",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "engineering",
+    "member": "alice",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "engineering",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "engineering",
+    "member": "maria",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "engineering",
+    "member": "rahul",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "general",
+    "member": "alice",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "general",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "general",
+    "member": "maria",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "general",
+    "member": "rahul",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "maria",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "maria",
+    "member": "maria",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "feature"
+  },
+  {
+    "conversation": "phase-five-revert-mwhxi3b4",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "phase-five-stash-mwhxi4lp",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "phase-five-switch-mwhxi22y",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "release"
+  },
+  {
+    "conversation": "phase-four-idempotent-mwhxi4m1",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "phase-four-live-mwhxi4xc",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "phase-four-order-mwhxi6cn",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "phase-four-reconnect-mwhxi5ah",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "phase-three-mwhxi2ez",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "rahul",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "rahul",
+    "member": "rahul",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "random",
+    "member": "alice",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "random",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "random",
+    "member": "maria",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "random",
+    "member": "rahul",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "weekend",
+    "member": "alice",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "weekend",
+    "member": "grok08",
+    "role": "owner",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "weekend",
+    "member": "maria",
+    "role": "developer",
+    "current_branch": "-"
+  },
+  {
+    "conversation": "weekend",
+    "member": "rahul",
+    "role": "developer",
+    "current_branch": "-"
+  }
+]
+
+## branches
+[
+  {
+    "id": "branch-conv-alice-main",
+    "conversation": "alice",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-engineering-feature-ui",
+    "conversation": "engineering",
+    "branch": "feature-ui",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-engineering-main",
+    "conversation": "engineering",
+    "branch": "main",
+    "head": "e39092c4"
+  },
+  {
+    "id": "branch-conv-engineering-weekend",
+    "conversation": "engineering",
+    "branch": "weekend",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-general-main",
+    "conversation": "general",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-direct-maria-main",
+    "conversation": "maria",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "f1475b0a-f4c3-4ae9-b26c-9c335c538bd7",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "branch": "feature",
+    "head": "71960640"
+  },
+  {
+    "id": "branch-conv-channel-phase-five-merge-mwhxi4k0-main",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "branch": "main",
+    "head": "7f71e08f"
+  },
+  {
+    "id": "branch-conv-channel-phase-five-revert-mwhxi3b4-main",
+    "conversation": "phase-five-revert-mwhxi3b4",
+    "branch": "main",
+    "head": "b933189c"
+  },
+  {
+    "id": "branch-conv-channel-phase-five-stash-mwhxi4lp-main",
+    "conversation": "phase-five-stash-mwhxi4lp",
+    "branch": "main",
+    "head": "8591c392"
+  },
+  {
+    "id": "branch-conv-channel-phase-five-switch-mwhxi22y-main",
+    "conversation": "phase-five-switch-mwhxi22y",
+    "branch": "main",
+    "head": "25abe69b"
+  },
+  {
+    "id": "9334ddbc-55b6-4e4b-9b6e-601c2d187c1c",
+    "conversation": "phase-five-switch-mwhxi22y",
+    "branch": "release",
+    "head": "bde8818c"
+  },
+  {
+    "id": "branch-conv-channel-phase-four-idempotent-mwhxi4m1-main",
+    "conversation": "phase-four-idempotent-mwhxi4m1",
+    "branch": "main",
+    "head": "2ccc67c5"
+  },
+  {
+    "id": "branch-conv-channel-phase-four-live-mwhxi4xc-main",
+    "conversation": "phase-four-live-mwhxi4xc",
+    "branch": "main",
+    "head": "74c88a1f"
+  },
+  {
+    "id": "branch-conv-channel-phase-four-order-mwhxi6cn-main",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "head": "79ac00f5"
+  },
+  {
+    "id": "branch-conv-channel-phase-four-reconnect-mwhxi5ah-main",
+    "conversation": "phase-four-reconnect-mwhxi5ah",
+    "branch": "main",
+    "head": "81ef76e0"
+  },
+  {
+    "id": "branch-conv-channel-phase-three-mwhxi2ez-main",
+    "conversation": "phase-three-mwhxi2ez",
+    "branch": "main",
+    "head": "23701bfc"
+  },
+  {
+    "id": "branch-conv-rahul-main",
+    "conversation": "rahul",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-random-main",
+    "conversation": "random",
+    "branch": "main",
+    "head": "-"
+  },
+  {
+    "id": "branch-conv-weekend-main",
+    "conversation": "weekend",
+    "branch": "main",
+    "head": "-"
+  }
+]
+
+## messages
+[
+  {
+    "seq": 1,
+    "id": "e39092c4-6d4f-434b-bc46-9e7de1079925",
+    "author": "grok08",
+    "conversation": "engineering",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase three persists 1794752840072",
+    "created_at": "2026-11-15T14:27:22.987Z"
+  },
+  {
+    "seq": 2,
+    "id": "25abe69b-5e2d-4bb0-b698-f88c00682e8e",
+    "author": "grok08",
+    "conversation": "phase-five-switch-mwhxi22y",
+    "branch": "main",
+    "command": "commit",
+    "text": "base work mwhxi22y",
+    "created_at": "2026-11-15T14:27:23.309Z"
+  },
+  {
+    "seq": 3,
+    "id": "23701bfc-5626-41d8-af82-b1a0fc9f2f79",
+    "author": "grok08",
+    "conversation": "phase-three-mwhxi2ez",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase three persists mwhxi2ez",
+    "created_at": "2026-11-15T14:27:24.223Z"
+  },
+  {
+    "seq": 4,
+    "id": "7f71e08f-e843-40f2-a8c4-9d3cfd6a6e6e",
+    "author": "grok08",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "branch": "main",
+    "command": "commit",
+    "text": "main line mwhxi4k0",
+    "created_at": "2026-11-15T14:27:25.885Z"
+  },
+  {
+    "seq": 5,
+    "id": "f185e6ca-3712-4240-932d-2da1f742236a",
+    "author": "grok08",
+    "conversation": "phase-five-revert-mwhxi3b4",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase five revert mwhxi3b4",
+    "created_at": "2026-11-15T14:27:26.333Z"
+  },
+  {
+    "seq": 6,
+    "id": "bde8818c-6064-481a-a0af-c16cdd254e56",
+    "author": "grok08",
+    "conversation": "phase-five-switch-mwhxi22y",
+    "branch": "release",
+    "command": "commit",
+    "text": "release work mwhxi22y",
+    "created_at": "2026-11-15T14:27:26.461Z"
+  },
+  {
+    "seq": 7,
+    "id": "b933189c-c771-423c-a290-04abe946a17d",
+    "author": "grok08",
+    "conversation": "phase-five-revert-mwhxi3b4",
+    "branch": "main",
+    "command": "revert",
+    "text": "Revert \"phase five revert mwhxi3b4\"",
+    "created_at": "2026-11-15T14:27:26.764Z"
+  },
+  {
+    "seq": 8,
+    "id": "2ccc67c5-ea2d-47a8-b598-43c3e158dcc9",
+    "author": "grok08",
+    "conversation": "phase-four-idempotent-mwhxi4m1",
+    "branch": "main",
+    "command": "commit",
+    "text": "idempotent retry mwhxi4m1",
+    "created_at": "2026-11-15T14:27:26.903Z"
+  },
+  {
+    "seq": 9,
+    "id": "85a115a6-06d3-49ae-aa5e-e04b17ca28c2",
+    "author": "grok08",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "branch": "feature",
+    "command": "commit",
+    "text": "feature line mwhxi4k0",
+    "created_at": "2026-11-15T14:27:27.379Z"
+  },
+  {
+    "seq": 10,
+    "id": "71960640-dd34-4e9f-a828-b6f95d079c6c",
+    "author": "grok08",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "branch": "feature",
+    "command": "merge",
+    "text": "Merge branch 'main' into feature",
+    "created_at": "2026-11-15T14:27:27.823Z"
+  },
+  {
+    "seq": 11,
+    "id": "74c88a1f-4ed0-40eb-bbcf-afec757beba7",
+    "author": "grok08",
+    "conversation": "phase-four-live-mwhxi4xc",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four live mwhxi4xc",
+    "created_at": "2026-11-15T14:27:28.274Z"
+  },
+  {
+    "seq": 12,
+    "id": "8591c392-a411-46e5-b367-0620ab2310e6",
+    "author": "grok08",
+    "conversation": "phase-five-stash-mwhxi4lp",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase five stash mwhxi4lp",
+    "created_at": "2026-11-15T14:27:30.361Z"
+  },
+  {
+    "seq": 13,
+    "id": "81ef76e0-6156-41da-ba6a-d6a73ee249c8",
+    "author": "grok08",
+    "conversation": "phase-four-reconnect-mwhxi5ah",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four reconnect mwhxi5ah",
+    "created_at": "2026-11-15T14:27:30.560Z"
+  },
+  {
+    "seq": 14,
+    "id": "6ff380cb-10bf-487e-89f8-3eb80dff831f",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhxi6cn 1",
+    "created_at": "2026-11-15T14:27:31.628Z"
+  },
+  {
+    "seq": 15,
+    "id": "53595991-ab7e-4102-aca7-67611bca4e96",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhxi6cn 2",
+    "created_at": "2026-11-15T14:27:31.900Z"
+  },
+  {
+    "seq": 16,
+    "id": "5ac82b77-0c9d-4457-af91-f55e8bdf4812",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhxi6cn 3",
+    "created_at": "2026-11-15T14:27:32.185Z"
+  },
+  {
+    "seq": 17,
+    "id": "bebdfcdd-fe93-45b2-939b-fd8d2f2a02b6",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhxi6cn 4",
+    "created_at": "2026-11-15T14:27:32.518Z"
+  },
+  {
+    "seq": 18,
+    "id": "79ac00f5-80c9-473b-bf50-ba587235ebda",
+    "author": "grok08",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "command": "commit",
+    "text": "phase four order mwhxi6cn 5",
+    "created_at": "2026-11-15T14:27:32.808Z"
+  }
+]
+
+## message state
+[
+  {
+    "seq": 1,
+    "message": "e39092c4",
+    "conversation": "engineering",
+    "branch": "main",
+    "text": "phase three persists 1794752840072",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 2,
+    "message": "25abe69b",
+    "conversation": "phase-five-switch-mwhxi22y",
+    "branch": "main",
+    "text": "base work mwhxi22y",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 3,
+    "message": "23701bfc",
+    "conversation": "phase-three-mwhxi2ez",
+    "branch": "main",
+    "text": "phase three persists mwhxi2ez",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 4,
+    "message": "7f71e08f",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "branch": "main",
+    "text": "main line mwhxi4k0",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 5,
+    "message": "f185e6ca",
+    "conversation": "phase-five-revert-mwhxi3b4",
+    "branch": "main",
+    "text": "phase five revert mwhxi3b4",
+    "reverted": 1,
+    "stashed": 0
+  },
+  {
+    "seq": 6,
+    "message": "bde8818c",
+    "conversation": "phase-five-switch-mwhxi22y",
+    "branch": "release",
+    "text": "release work mwhxi22y",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 7,
+    "message": "b933189c",
+    "conversation": "phase-five-revert-mwhxi3b4",
+    "branch": "main",
+    "text": "Revert \"phase five revert mwhxi3b4\"",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 8,
+    "message": "2ccc67c5",
+    "conversation": "phase-four-idempotent-mwhxi4m1",
+    "branch": "main",
+    "text": "idempotent retry mwhxi4m1",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 9,
+    "message": "85a115a6",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "branch": "feature",
+    "text": "feature line mwhxi4k0",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 10,
+    "message": "71960640",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "branch": "feature",
+    "text": "Merge branch 'main' into feature",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 11,
+    "message": "74c88a1f",
+    "conversation": "phase-four-live-mwhxi4xc",
+    "branch": "main",
+    "text": "phase four live mwhxi4xc",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 12,
+    "message": "8591c392",
+    "conversation": "phase-five-stash-mwhxi4lp",
+    "branch": "main",
+    "text": "phase five stash mwhxi4lp",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 13,
+    "message": "81ef76e0",
+    "conversation": "phase-four-reconnect-mwhxi5ah",
+    "branch": "main",
+    "text": "phase four reconnect mwhxi5ah",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 14,
+    "message": "6ff380cb",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "text": "phase four order mwhxi6cn 1",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 15,
+    "message": "53595991",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "text": "phase four order mwhxi6cn 2",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 16,
+    "message": "5ac82b77",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "text": "phase four order mwhxi6cn 3",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 17,
+    "message": "bebdfcdd",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "text": "phase four order mwhxi6cn 4",
+    "reverted": 0,
+    "stashed": 0
+  },
+  {
+    "seq": 18,
+    "message": "79ac00f5",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "branch": "main",
+    "text": "phase four order mwhxi6cn 5",
+    "reverted": 0,
+    "stashed": 0
+  }
+]
+
+## git commands
+[
+  {
+    "message_id": "25abe69b-5e2d-4bb0-b698-f88c00682e8e",
+    "verb": "commit",
+    "raw": "git commit -m \"base work mwhxi22y\"",
+    "args": "{\"type\":\"commit\",\"message\":\"base work mwhxi22y\",\"amend\":false}"
+  },
+  {
+    "message_id": "85a115a6-06d3-49ae-aa5e-e04b17ca28c2",
+    "verb": "commit",
+    "raw": "git commit -m \"feature line mwhxi4k0\"",
+    "args": "{\"type\":\"commit\",\"message\":\"feature line mwhxi4k0\",\"amend\":false}"
+  },
+  {
+    "message_id": "2ccc67c5-ea2d-47a8-b598-43c3e158dcc9",
+    "verb": "commit",
+    "raw": "git commit -m \"idempotent retry mwhxi4m1\"",
+    "args": "{\"type\":\"commit\",\"message\":\"idempotent retry mwhxi4m1\",\"amend\":false}"
+  },
+  {
+    "message_id": "7f71e08f-e843-40f2-a8c4-9d3cfd6a6e6e",
+    "verb": "commit",
+    "raw": "git commit -m \"main line mwhxi4k0\"",
+    "args": "{\"type\":\"commit\",\"message\":\"main line mwhxi4k0\",\"amend\":false}"
+  },
+  {
+    "message_id": "f185e6ca-3712-4240-932d-2da1f742236a",
+    "verb": "commit",
+    "raw": "git commit -m \"phase five revert mwhxi3b4\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase five revert mwhxi3b4\",\"amend\":false}"
+  },
+  {
+    "message_id": "8591c392-a411-46e5-b367-0620ab2310e6",
+    "verb": "commit",
+    "raw": "git commit -m \"phase five stash mwhxi4lp\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase five stash mwhxi4lp\",\"amend\":false}"
+  },
+  {
+    "message_id": "74c88a1f-4ed0-40eb-bbcf-afec757beba7",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four live mwhxi4xc\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four live mwhxi4xc\",\"amend\":false}"
+  },
+  {
+    "message_id": "6ff380cb-10bf-487e-89f8-3eb80dff831f",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four order mwhxi6cn 1\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhxi6cn 1\",\"amend\":false}"
+  },
+  {
+    "message_id": "53595991-ab7e-4102-aca7-67611bca4e96",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four order mwhxi6cn 2\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhxi6cn 2\",\"amend\":false}"
+  },
+  {
+    "message_id": "5ac82b77-0c9d-4457-af91-f55e8bdf4812",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four order mwhxi6cn 3\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhxi6cn 3\",\"amend\":false}"
+  },
+  {
+    "message_id": "bebdfcdd-fe93-45b2-939b-fd8d2f2a02b6",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four order mwhxi6cn 4\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhxi6cn 4\",\"amend\":false}"
+  },
+  {
+    "message_id": "79ac00f5-80c9-473b-bf50-ba587235ebda",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four order mwhxi6cn 5\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four order mwhxi6cn 5\",\"amend\":false}"
+  },
+  {
+    "message_id": "81ef76e0-6156-41da-ba6a-d6a73ee249c8",
+    "verb": "commit",
+    "raw": "git commit -m \"phase four reconnect mwhxi5ah\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase four reconnect mwhxi5ah\",\"amend\":false}"
+  },
+  {
+    "message_id": "e39092c4-6d4f-434b-bc46-9e7de1079925",
+    "verb": "commit",
+    "raw": "git commit -m \"phase three persists 1794752840072\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase three persists 1794752840072\",\"amend\":false}"
+  },
+  {
+    "message_id": "23701bfc-5626-41d8-af82-b1a0fc9f2f79",
+    "verb": "commit",
+    "raw": "git commit -m \"phase three persists mwhxi2ez\"",
+    "args": "{\"type\":\"commit\",\"message\":\"phase three persists mwhxi2ez\",\"amend\":false}"
+  },
+  {
+    "message_id": "bde8818c-6064-481a-a0af-c16cdd254e56",
+    "verb": "commit",
+    "raw": "git commit -m \"release work mwhxi22y\"",
+    "args": "{\"type\":\"commit\",\"message\":\"release work mwhxi22y\",\"amend\":false}"
+  },
+  {
+    "message_id": "71960640-dd34-4e9f-a828-b6f95d079c6c",
+    "verb": "merge",
+    "raw": "git merge main",
+    "args": "{\"type\":\"merge\",\"branch\":\"main\"}"
+  },
+  {
+    "message_id": "b933189c-c771-423c-a290-04abe946a17d",
+    "verb": "revert",
+    "raw": "git revert f185e6ca",
+    "args": "{\"type\":\"revert\",\"target\":\"f185e6ca\"}"
+  }
+]
+
+## message events
+[
+  {
+    "message_id": "23701bfc-5626-41d8-af82-b1a0fc9f2f79",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "25abe69b-5e2d-4bb0-b698-f88c00682e8e",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "2ccc67c5-ea2d-47a8-b598-43c3e158dcc9",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "53595991-ab7e-4102-aca7-67611bca4e96",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "5ac82b77-0c9d-4457-af91-f55e8bdf4812",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "6ff380cb-10bf-487e-89f8-3eb80dff831f",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "71960640-dd34-4e9f-a828-b6f95d079c6c",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "71960640-dd34-4e9f-a828-b6f95d079c6c",
+    "type": "merged",
+    "payload": "{\"sourceBranchId\":\"branch-conv-channel-phase-five-merge-mwhxi4k0-main\",\"sourceBranchName\":\"main\",\"targetBranchId\":\"f1475b0a-f4c3-4ae9-b26c-9c335c538bd7\",\"sourceHeadMessageId\":\"7f71e08f-e843-40f2-a8c4-9d3cfd6a6e6e\",\"targetHeadMessageId\":\"85a115a6-06d3-49ae-aa5e-e04b17ca28c2\"}"
+  },
+  {
+    "message_id": "74c88a1f-4ed0-40eb-bbcf-afec757beba7",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "79ac00f5-80c9-473b-bf50-ba587235ebda",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "7f71e08f-e843-40f2-a8c4-9d3cfd6a6e6e",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "81ef76e0-6156-41da-ba6a-d6a73ee249c8",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "8591c392-a411-46e5-b367-0620ab2310e6",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "8591c392-a411-46e5-b367-0620ab2310e6",
+    "type": "stashed",
+    "payload": "{\"note\":null}"
+  },
+  {
+    "message_id": "8591c392-a411-46e5-b367-0620ab2310e6",
+    "type": "unstashed",
+    "payload": "{\"byMessageId\":\"201f7486-93f7-41f3-bf4b-7cfeabdb4238\"}"
+  },
+  {
+    "message_id": "85a115a6-06d3-49ae-aa5e-e04b17ca28c2",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "b933189c-c771-423c-a290-04abe946a17d",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "bde8818c-6064-481a-a0af-c16cdd254e56",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "bebdfcdd-fe93-45b2-939b-fd8d2f2a02b6",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "e39092c4-6d4f-434b-bc46-9e7de1079925",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "f185e6ca-3712-4240-932d-2da1f742236a",
+    "type": "created",
+    "payload": null
+  },
+  {
+    "message_id": "f185e6ca-3712-4240-932d-2da1f742236a",
+    "type": "reverted",
+    "payload": "{\"byMessageId\":\"b933189c-c771-423c-a290-04abe946a17d\"}"
+  }
+]
+
+## command requests
+[
+  {
+    "id": "236b0054-74d6-4eeb-a810-32d1dcb89e8e",
+    "conversation": "engineering",
+    "author": "grok08",
+    "message": "e39092c4",
+    "created_at": "2026-11-15T14:27:22.987Z"
+  },
+  {
+    "id": "4dbbdd18-8afd-4438-beb0-61c696c8be25",
+    "conversation": "phase-five-switch-mwhxi22y",
+    "author": "grok08",
+    "message": "25abe69b",
+    "created_at": "2026-11-15T14:27:23.309Z"
+  },
+  {
+    "id": "d91e02ea-ca47-4b62-a3e1-d3d8409d9d8d",
+    "conversation": "phase-three-mwhxi2ez",
+    "author": "grok08",
+    "message": "23701bfc",
+    "created_at": "2026-11-15T14:27:24.223Z"
+  },
+  {
+    "id": "e2069950-f516-4d6e-93bc-7491d4c3437c",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "author": "grok08",
+    "message": "7f71e08f",
+    "created_at": "2026-11-15T14:27:25.885Z"
+  },
+  {
+    "id": "8ab76410-4bd9-4a13-9e28-595c2f9ba384",
+    "conversation": "phase-five-revert-mwhxi3b4",
+    "author": "grok08",
+    "message": "f185e6ca",
+    "created_at": "2026-11-15T14:27:26.333Z"
+  },
+  {
+    "id": "d5a67d9e-db99-4878-83d5-8ec1fd33646b",
+    "conversation": "phase-five-switch-mwhxi22y",
+    "author": "grok08",
+    "message": "bde8818c",
+    "created_at": "2026-11-15T14:27:26.461Z"
+  },
+  {
+    "id": "7cff60e5-df2a-403d-ac5f-717cc91af3b4",
+    "conversation": "phase-five-revert-mwhxi3b4",
+    "author": "grok08",
+    "message": "b933189c",
+    "created_at": "2026-11-15T14:27:26.764Z"
+  },
+  {
+    "id": "2f6aca94-ad14-426c-9ac7-fe216bb23f53",
+    "conversation": "phase-four-idempotent-mwhxi4m1",
+    "author": "grok08",
+    "message": "2ccc67c5",
+    "created_at": "2026-11-15T14:27:26.903Z"
+  },
+  {
+    "id": "9bf48426-9db9-4bbb-bf44-8709757a3107",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "author": "grok08",
+    "message": "85a115a6",
+    "created_at": "2026-11-15T14:27:27.379Z"
+  },
+  {
+    "id": "e1852d2d-d890-4337-afb0-06967429365f",
+    "conversation": "phase-five-merge-mwhxi4k0",
+    "author": "grok08",
+    "message": "71960640",
+    "created_at": "2026-11-15T14:27:27.823Z"
+  },
+  {
+    "id": "ed4e1ab7-9001-4a62-b11d-42814f722fd9",
+    "conversation": "phase-four-live-mwhxi4xc",
+    "author": "grok08",
+    "message": "74c88a1f",
+    "created_at": "2026-11-15T14:27:28.274Z"
+  },
+  {
+    "id": "6a002903-f7b4-4ad1-9204-6a339f284a53",
+    "conversation": "phase-five-stash-mwhxi4lp",
+    "author": "grok08",
+    "message": "8591c392",
+    "created_at": "2026-11-15T14:27:30.361Z"
+  },
+  {
+    "id": "d31d14d3-ae76-423a-a664-eddb9e817fe7",
+    "conversation": "phase-four-reconnect-mwhxi5ah",
+    "author": "grok08",
+    "message": "81ef76e0",
+    "created_at": "2026-11-15T14:27:30.560Z"
+  },
+  {
+    "id": "c9e6df30-b5f3-4403-bd4e-ce002aece30c",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "author": "grok08",
+    "message": "6ff380cb",
+    "created_at": "2026-11-15T14:27:31.628Z"
+  },
+  {
+    "id": "05f23f8e-7073-48da-b7bb-08dafc1c95ab",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "author": "grok08",
+    "message": "53595991",
+    "created_at": "2026-11-15T14:27:31.900Z"
+  },
+  {
+    "id": "00d3c7ae-7ed7-49b1-bc31-5516d8db96f4",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "author": "grok08",
+    "message": "5ac82b77",
+    "created_at": "2026-11-15T14:27:32.185Z"
+  },
+  {
+    "id": "b23ae7cd-8ba7-477f-a71d-fd769bdc75e1",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "author": "grok08",
+    "message": "bebdfcdd",
+    "created_at": "2026-11-15T14:27:32.518Z"
+  },
+  {
+    "id": "85044325-d734-4116-b63d-e4395341d628",
+    "conversation": "phase-four-order-mwhxi6cn",
+    "author": "grok08",
+    "message": "79ac00f5",
+    "created_at": "2026-11-15T14:27:32.808Z"
+  }
+]

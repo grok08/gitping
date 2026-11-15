@@ -50,6 +50,8 @@ SQLite
      every connected client in that conversation
 ```
 
+A command answers with one untagged body. `git commit`, `git revert`, and `git merge` answer with `{ message }`; `git branch` and `git switch` answer with `{ branches }`; `git stash` commands answer with `{ stashes }`.
+
 The current implementation is an early product foundation rather than a production-ready messaging service.
 
 The conversation list, member counts, last-message previews, branch lists, and per-conversation message history are read from SQLite. Creating a channel or direct message writes the conversation, its membership, and its `main` branch in one transaction. A commit is persisted before it is broadcast, so a client never sees a message SQLite does not have.
@@ -65,24 +67,35 @@ The composer accepts Git commands such as:
 ```bash
 git commit -m "hello"
 git commit --amend
+git revert <message-id-or-prefix>
+git merge <branch>
+git branch
+git branch <name>
+git switch <name>
+git switch -c <name>
+git stash
+git stash push -m "note"
+git stash list
+git stash pop [id]
 git log
 git show
-git branch
-git switch
-git switch -c feature-ui
 git status
 git fetch
 git pull
 git push
-git revert
-git stash
-git stash list
-git stash pop
 git config user.name
 git config user.email
 ```
 
-The command parser lives in the `command-engine` workspace package.
+The parser lives in the `command-engine` workspace package. The commands GitPing acts on are:
+
+| Kind | Commands | Result |
+| --- | --- | --- |
+| Content | `commit`, `revert`, `merge` | a new message, broadcast to the conversation |
+| Context | `branch`, `switch`, `stash`, `stash pop`, `stash list` | state, returned to the caller, no message |
+| Rejected | `log`, `show`, `status`, `fetch`, `pull`, `push`, `config`, `init`, `clone` | `400`, unchanged |
+
+A context command produces no message because it changes where work lands, not what the conversation says.
 
 ### Messaging UI
 
@@ -96,7 +109,11 @@ The frontend currently provides:
 - server-computed member counts and last-message previews
 - message history per conversation
 - command composer scoped to the selected conversation and branch
-- branch selector driven by the conversation's branches
+- branch selector driven by the conversation's branches, restored from the member's persisted branch on load
+- `git branch`, `git switch`, and `git switch -c` as the branch commands
+- `git revert` with a reverted pill, reduced emphasis, and the original row kept in history
+- `git merge` that records both heads as a merge message
+- `git stash`, `git stash list`, and `git stash pop` with a transient count notice
 - conversation search
 - global search
 - workspace members (local data until Phase 8)
@@ -255,7 +272,7 @@ Example:
 {
   "status": "ok",
   "database": true,
-  "schemaVersion": 2
+  "schemaVersion": 3
 }
 ```
 
@@ -332,7 +349,29 @@ Request (same body as `POST /commands`, with the conversation taken from the pat
 }
 ```
 
-`branch` defaults to `main` and `requestId` is optional. The response is the `POST /commands` message shape. An unknown branch or invalid command returns `400`; an unknown conversation returns `404`. A malformed `requestId` returns `400` and a reused one returns `409`, as described in [Idempotent commands](#idempotent-commands-requestid).
+`branch` is the branch the caller's selector shows; when it is omitted the server uses the member's persisted branch. `requestId` is optional.
+
+The response is an untagged union of three bodies, one per command kind:
+
+```json
+{ "message": { "id": "...", "seq": 12, "reverted": false, "stashed": false, "command": "git commit", "text": "hello", "author": "grok08", "createdAt": "..." } }
+```
+
+```json
+{ "branches": [ { "id": "...", "name": "main", "headMessageId": "...", "current": true } ] }
+```
+
+```json
+{ "stashes": [ { "id": "...", "text": "...", "note": "wip", "createdAt": "..." } ] }
+```
+
+A client checks `"message" in body`, then `"branches" in body`, then `"stashes" in body`. A `message` body is `201`; a context body is `200`. A rejected command returns `400`, a duplicate branch or an already reverted message returns `409`, and an unknown conversation returns `404` on this route.
+
+```http
+GET /conversations/:id/stashes
+```
+
+Returns the same `stashes` array for the current user's current branch, so the client can refresh without sending a command.
 
 ```http
 GET /conversations/:id/members
@@ -356,7 +395,7 @@ Returns members with their user fields:
 GET /conversations/:id/branches
 ```
 
-Returns `id`, `name`, and `headMessageId` per branch, with `main` first. Every unknown conversation id on a nested route returns `404` with `{ "error": "Unknown conversation: ..." }`.
+Returns `id`, `name`, and `headMessageId` per branch, with `main` first. `current` marks the branch the requesting member is on, which is what a reload restores. Every unknown conversation id on a nested route returns `404` with `{ "error": "Unknown conversation: ..." }`.
 
 ### Messages
 
@@ -374,12 +413,14 @@ Returns persisted messages ordered by commit order. Each message is joined with 
     "author": "grok08",
     "text": "hello from GitPing",
     "command": "git commit",
-    "created_at": "..."
+    "created_at": "...",
+    "reverted": false,
+    "stashed": false
   }
 ]
 ```
 
-`seq` is the conversation-independent commit order. It is the ordering key clients use for realtime events.
+`seq` is the conversation-independent commit order. It is the ordering key clients use for realtime events. `reverted` and `stashed` are derived by the message repository from the message's events, so a row never carries a boolean that can drift.
 
 `GET /messages` returns every conversation's messages and remains for compatibility and simple scripts. The browser reads `GET /conversations/:id/messages` instead.
 
@@ -401,7 +442,7 @@ Request:
 }
 ```
 
-`conversation` and `branch` are optional and default to `engineering` on `main`. `requestId` is optional too; both command endpoints accept it. The browser now uses `POST /conversations/:id/commands`; this route remains for compatibility and direct API use. Response:
+`conversation` and `branch` are optional. `conversation` defaults to `engineering`; `branch` defaults to the member's persisted branch. `requestId` is optional too; both command endpoints accept it. The browser now uses `POST /conversations/:id/commands`; this route remains for compatibility and direct API use. Response:
 
 ```json
 {
@@ -460,7 +501,23 @@ Server frames:
     "author": "grok08",
     "text": "hello from GitPing",
     "command": "git commit",
-    "createdAt": "2026-11-15T12:48:50.664Z"
+    "createdAt": "2026-11-15T12:48:50.664Z",
+    "reverted": false,
+    "stashed": false
+  }
+}
+```
+
+```json
+{
+  "type": "message.updated",
+  "conversationId": "conv-engineering",
+  "seq": 3,
+  "message": {
+    "seq": 3,
+    "id": "0ad68472-56c9-4da6-92ac-6c255d5fa337",
+    "reverted": true,
+    "stashed": false
   }
 }
 ```
@@ -481,6 +538,8 @@ Rules the server and client rely on:
 - The event is sent only after the message transaction commits. A rolled-back write is never broadcast.
 - Both `POST /conversations/:id/commands` and `POST /commands` broadcast.
 - The event goes only to clients subscribed to that conversation.
+- `message.updated` is sent after a state transaction commits, once per affected message, by `git revert`, `git stash`, and `git stash pop`. The client merges by id, so the row is replaced in place and keeps its `seq`.
+- Branch and switch broadcast nothing: branch context is per member, and the actor receives the new list in its response.
 - The upgrade checks the `Origin` header against the same allowlist as CORS, because CORS does not apply to WebSocket upgrades.
 - The client pings every 25 s and reconnects if no frame arrives within 10 s, so a silent socket cannot keep looking `Live`.
 - A client that cannot drain its socket past 1 MiB is closed, so it reconnects and catches up instead of growing a buffer.
@@ -518,7 +577,7 @@ conversations
 ├── id, name, kind (channel | direct), created_by, created_at
 
 conversation_members
-├── conversation_id, user_id, joined_at, last_read_at
+├── conversation_id, user_id, joined_at, last_read_at, current_branch_id
 
 branches
 ├── id, conversation_id, name, head_message_id, created_from_branch_id, created_at
@@ -530,7 +589,7 @@ git_commands
 ├── id, message_id, verb, raw, args (parsed command as JSON), parsed_at
 
 message_events
-├── id, message_id, type (created | reverted | stashed | merged), payload, created_at
+├── id, message_id, type (created | reverted | stashed | unstashed | merged), payload, created_at
 ```
 
 Schema version 2 adds one table, for client-named commands:
@@ -540,13 +599,24 @@ command_requests
 ├── id (the client's requestId), conversation_id, message_id (UNIQUE), author_id, created_at
 ```
 
+Schema version 3 adds branch context to membership and backfills it to `main`:
+
+```sql
+ALTER TABLE conversation_members
+  ADD COLUMN current_branch_id TEXT REFERENCES branches(id);
+```
+
+A member is always on exactly one branch of the conversation. `NULL` is treated as `main` on read, so a member created before the backfill still resolves. Message state is not stored in a column: `reverted` and `stashed` are derived in the message repository's `SELECT` from `message_events`, which makes the answer a pure function of the event set rather than of event order.
+
 A message is a human-visible line plus the Git command that produced it. The parser output is stored on `git_commands.args`, and every write also records a `created` event so the history can grow into revert, stash, and merge semantics without rewriting rows. `command_requests` maps a request id to the message it produced, so a retry resolves to that row instead of writing a second message.
 
 On first run the API creates the schema, seeds four users, six conversations, and eight branches, and backfills any rows from the pre-migration `messages` table into `engineering` on `main`. A conversation created later adds its membership and `main` branch inside one transaction, so a conversation never exists without a branch.
 
 Phase 3 needed no schema change.
 
-Phase 4 added migration 2 for idempotent commands. Ordering still uses the existing `messages.seq`, and `message_events` already records the `created` event per message. `PRAGMA user_version` is now 2.
+Phase 4 added migration 2 for idempotent commands. Ordering still uses the existing `messages.seq`, and `message_events` already records the `created` event per message.
+
+Phase 5 added migration 3 for branch context. `PRAGMA user_version` is now 3.
 
 Inspect a database file:
 
@@ -661,6 +731,28 @@ Send the same command twice with one `requestId`, and the second response repeat
 curl -i -X POST http://localhost:3000/conversations/conv-channel-architecture/commands \
   -H "Content-Type: application/json" \
   -d '{"input":"git commit -m \"retry me\"","branch":"main","requestId":"6f1f0b0e-5c3e-4b7e-9a51-2f0a3a1f0c11"}'
+```
+
+Work with branches, reverts, merges, and stashes through the same endpoint:
+
+```bash
+curl -X POST http://localhost:3000/conversations/conv-channel-architecture/commands \
+  -H "Content-Type: application/json" \
+  -d '{"input":"git switch -c release","branch":"main"}'
+
+curl -X POST http://localhost:3000/conversations/conv-channel-architecture/commands \
+  -H "Content-Type: application/json" \
+  -d '{"input":"git revert 0ad68472","branch":"release"}'
+
+curl -X POST http://localhost:3000/conversations/conv-channel-architecture/commands \
+  -H "Content-Type: application/json" \
+  -d '{"input":"git merge main","branch":"release"}'
+
+curl -X POST http://localhost:3000/conversations/conv-channel-architecture/commands \
+  -H "Content-Type: application/json" \
+  -d '{"input":"git stash","branch":"release"}'
+
+curl http://localhost:3000/conversations/conv-channel-architecture/stashes
 ```
 
 Every phase keeps browser evidence under `evidence/`. See `AGENTS.md` for the rule.

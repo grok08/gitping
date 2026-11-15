@@ -62,10 +62,12 @@ print(
       SELECT
         c.name AS conversation,
         u.handle AS member,
-        u.role
+        u.role,
+        COALESCE(b.name, '-') AS current_branch
       FROM conversation_members m
       JOIN conversations c ON c.id = m.conversation_id
       JOIN users u ON u.id = m.user_id
+      LEFT JOIN branches b ON b.id = m.current_branch_id
       ORDER BY c.name, m.joined_at, u.handle
     `)
     .all(),
@@ -111,13 +113,46 @@ print(
 );
 
 print(
+  "message state",
+  db
+    .query(`
+      SELECT
+        m.seq,
+        substr(m.id, 1, 8) AS message,
+        c.name AS conversation,
+        b.name AS branch,
+        m.text,
+        EXISTS (
+          SELECT 1 FROM message_events e
+          WHERE e.message_id = m.id AND e.type = 'reverted'
+        ) AS reverted,
+        EXISTS (
+          SELECT 1 FROM message_events e
+          WHERE e.message_id = m.id AND e.type = 'stashed'
+        ) AND NOT EXISTS (
+          SELECT 1 FROM message_events e
+          WHERE e.message_id = m.id AND e.type = 'unstashed'
+        ) AS stashed
+      FROM messages m
+      JOIN conversations c ON c.id = m.conversation_id
+      JOIN branches b ON b.id = m.branch_id
+      ORDER BY m.seq
+    `)
+    .all(),
+);
+
+print(
   "git commands",
   db.query("SELECT message_id, verb, raw, args FROM git_commands ORDER BY raw").all(),
 );
 
 print(
   "message events",
-  db.query("SELECT message_id, type FROM message_events ORDER BY message_id").all(),
+  db
+    .query(
+      "SELECT message_id, type, payload FROM message_events ORDER BY message_id, rowid",
+    )
+    .all(),
 );
 
 if (tables.some((table) => table.name === "command_requests")) {

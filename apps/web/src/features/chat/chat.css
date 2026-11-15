@@ -336,6 +336,31 @@
   font-size: 9px;
 }
 
+/*
+ * A reverted message keeps its place in history, so it is dimmed rather than
+ * removed, and the pill names the state so the dimming has a reason.
+ */
+.message-row.reverted .message-text,
+.message-row.reverted .message-author,
+.message-row.reverted .message-command {
+  opacity: 0.55;
+}
+
+.message-row.reverted .message-text {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--text-muted) 55%, transparent);
+}
+
+.revert-pill {
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--danger) 8%, var(--panel));
+  color: var(--danger);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9px;
+}
+
 .message-copy {
   width: 24px;
   height: 24px;

@@ -8,8 +8,13 @@ type MessageItemProps = {
 };
 
 export function MessageItem({ message, onCopyCommand }: MessageItemProps) {
+  const [, verb = "commit"] = message.command.split(" ");
+
   return (
-    <article className="message-row">
+    <article
+      className={message.reverted ? "message-row reverted" : "message-row"}
+      aria-label={message.reverted ? "Reverted message" : undefined}
+    >
       <Avatar label={message.avatar} mine={message.mine} />
 
       <div className="message-body">
@@ -36,7 +41,9 @@ export function MessageItem({ message, onCopyCommand }: MessageItemProps) {
         </div>
 
         <div className="message-footer">
-          <span className="commit-pill">commit</span>
+          <span className="commit-pill">{verb}</span>
+
+          {message.reverted && <span className="revert-pill">reverted</span>}
 
           <span className="commit-id">{message.id.slice(0, 8)}</span>
         </div>

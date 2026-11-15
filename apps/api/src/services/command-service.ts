@@ -325,10 +325,7 @@ export function createCommandService({
     const reverted = resolved.message;
 
     if (messages.hasEvent(reverted.id, "reverted")) {
-      return reject(
-        "conflict",
-        `Message ${target} is already reverted`,
-      );
+      return reject("conflict", `Message ${target} is already reverted`);
     }
 
     const result = persistContent({
@@ -377,10 +374,7 @@ export function createCommandService({
     }
 
     if (source.id === current.id) {
-      return reject(
-        "invalid_argument",
-        "Cannot merge a branch into itself",
-      );
+      return reject("invalid_argument", "Cannot merge a branch into itself");
     }
 
     if (
@@ -464,15 +458,14 @@ export function createCommandService({
     target: string | undefined,
   ): SendCommandResult {
     const stashed = stashesFor(conversation.id, branch);
-    const stash = target
-      ? findStash(stashed, target)
-      : stashed[0];
+    const stash = target ? findStash(stashed, target) : stashed[0];
 
     if (!stash) {
-      return reject(
-        "invalid_argument",
-        target ? `Unknown stash: ${target}` : `No stash to pop on ${branch.name}`,
-      );
+      const error = target
+        ? `Unknown stash: ${target}`
+        : `No stash to pop on ${branch.name}`;
+
+      return reject("invalid_argument", error);
     }
 
     const restore = db.transaction(() => {

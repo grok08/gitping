@@ -11,6 +11,8 @@ type MockMessage = {
   created_at: string;
   reverted: boolean;
   stashed: boolean;
+  note: string | null;
+  branchId: string;
 };
 
 type MockConversation = {
@@ -26,6 +28,7 @@ type MockBranch = {
   id: string;
   name: string;
   headMessageId: string | null;
+  current: boolean;
 };
 
 type MockMember = {
@@ -59,6 +62,8 @@ function createState(): MockState {
     created_at: "2026-10-03T08:42:00.000Z",
     reverted: false,
     stashed: false,
+    note: null,
+    branchId: "branch-conv-engineering-main",
   };
 
   return {
@@ -82,16 +87,16 @@ function createState(): MockState {
       [
         "conv-engineering",
         [
-          { id: "branch-conv-engineering-main", name: "main", headMessageId: seedMessage.id },
-          { id: "branch-conv-engineering-weekend", name: "weekend", headMessageId: null },
-          { id: "branch-conv-engineering-feature-ui", name: "feature-ui", headMessageId: null },
+          { id: "branch-conv-engineering-main", name: "main", headMessageId: seedMessage.id, current: true },
+          { id: "branch-conv-engineering-weekend", name: "weekend", headMessageId: null, current: false },
+          { id: "branch-conv-engineering-feature-ui", name: "feature-ui", headMessageId: null, current: false },
         ],
       ],
-      ["conv-general", [{ id: "branch-conv-general-main", name: "main", headMessageId: null }]],
-      ["conv-random", [{ id: "branch-conv-random-main", name: "main", headMessageId: null }]],
-      ["conv-weekend", [{ id: "branch-conv-weekend-main", name: "main", headMessageId: null }]],
-      ["conv-rahul", [{ id: "branch-conv-rahul-main", name: "main", headMessageId: null }]],
-      ["conv-alice", [{ id: "branch-conv-alice-main", name: "main", headMessageId: null }]],
+      ["conv-general", [{ id: "branch-conv-general-main", name: "main", headMessageId: null, current: true }]],
+      ["conv-random", [{ id: "branch-conv-random-main", name: "main", headMessageId: null, current: true }]],
+      ["conv-weekend", [{ id: "branch-conv-weekend-main", name: "main", headMessageId: null, current: true }]],
+      ["conv-rahul", [{ id: "branch-conv-rahul-main", name: "main", headMessageId: null, current: true }]],
+      ["conv-alice", [{ id: "branch-conv-alice-main", name: "main", headMessageId: null, current: true }]],
     ]),
   };
 }
@@ -117,6 +122,32 @@ function parseCommitText(input: string): string {
   const match = input.match(/(?:-m|--message)\s+["'](.*?)["']\s*$/);
 
   return match?.[1] ?? input;
+}
+
+function stashRecords(
+  state: MockState,
+  conversationId: string,
+  branchId: string,
+): Array<{ id: string; text: string; note: string | null; createdAt: string }> {
+  return (state.messages.get(conversationId) ?? [])
+    .filter((message) => message.branchId === branchId && message.stashed)
+    .sort((left, right) => right.seq - left.seq)
+    .map((message) => ({
+      id: message.id,
+      text: message.text,
+      note: message.note,
+      createdAt: message.created_at,
+    }));
+}
+
+function setCurrentBranch(
+  state: MockState,
+  conversationId: string,
+  branchId: string,
+): void {
+  for (const branch of state.branches.get(conversationId) ?? []) {
+    branch.current = branch.id === branchId;
+  }
 }
 
 export async function openApp(
@@ -210,7 +241,7 @@ export async function openApp(
 
     const { pathname } = new URL(request.url());
     const nested = pathname.match(
-      /^\/conversations\/([^/]+)\/(messages|commands|members|branches)$/,
+      /^\/conversations\/([^/]+)\/(messages|commands|members|branches|stashes)$/,
     );
 
     if (request.method() === "GET" && pathname === "/conversations") {
@@ -254,7 +285,7 @@ export async function openApp(
       state.conversations.push(conversation);
       state.messages.set(id, []);
       state.branches.set(id, [
-        { id: `branch-${id}-main`, name: "main", headMessageId: null },
+        { id: `branch-${id}-main`, name: "main", headMessageId: null, current: true },
       ]);
 
       await json(201, { conversation });
@@ -292,6 +323,15 @@ export async function openApp(
       return;
     }
 
+    if (request.method() === "GET" && resource === "stashes") {
+      const current = (state.branches.get(conversationId) ?? []).find(
+        (item) => item.current,
+      );
+
+      await json(200, stashRecords(state, conversationId, current?.id ?? ""));
+      return;
+    }
+
     if (request.method() === "POST" && resource === "commands") {
       const body = request.postDataJSON() as {
         input?: string;
@@ -307,8 +347,196 @@ export async function openApp(
         return;
       }
 
-      const text = parseCommitText(input);
       const messages = state.messages.get(conversationId) ?? [];
+      const words = input.trim().split(/\s+/);
+
+      if (words[1] === "branch") {
+        const name = words[2];
+
+        if (name === undefined) {
+          await json(200, { branches });
+          return;
+        }
+
+        if (branches.some((item) => item.name === name)) {
+          await json(409, { error: `Branch already exists: ${name}` });
+          return;
+        }
+
+        branches.push({
+          id: `branch-${conversationId}-${slugify(name)}`,
+          name,
+          headMessageId: branch.headMessageId,
+          current: false,
+        });
+        submittedCommands.push(input);
+
+        await json(200, { branches });
+        return;
+      }
+
+      if (words[1] === "switch") {
+        const name = words[2] === "-c" ? words[3] : words[2];
+        const existing = branches.find((item) => item.name === name);
+
+        if (!name) {
+          await json(400, { error: "Unknown branch: " });
+          return;
+        }
+
+        if (!existing && words[2] === "-c") {
+          branches.push({
+            id: `branch-${conversationId}-${slugify(name)}`,
+            name,
+            headMessageId: branch.headMessageId,
+            current: true,
+          });
+        } else if (!existing) {
+          await json(400, { error: `Unknown branch: ${name}` });
+          return;
+        }
+
+        const target = branches.find((item) => item.name === name);
+
+        if (target) {
+          setCurrentBranch(state, conversationId, target.id);
+        }
+
+        submittedCommands.push(input);
+
+        await json(200, { branches });
+        return;
+      }
+
+      if (words[1] === "stash") {
+        const stashed = messages.filter(
+          (message) => message.branchId === branch.id && message.stashed,
+        );
+
+        if (words[2] === "list") {
+          submittedCommands.push(input);
+          await json(200, {
+            stashes: stashRecords(state, conversationId, branch.id),
+          });
+          return;
+        }
+
+        if (words[2] === "pop") {
+          const target = words[3];
+          const stash = target
+            ? stashed.find((message) => message.id.startsWith(target))
+            : stashed.sort((left, right) => right.seq - left.seq)[0];
+
+          if (!stash) {
+            await json(400, {
+              error: target
+                ? `Unknown stash: ${target}`
+                : `No stash to pop on ${branch.name}`,
+            });
+            return;
+          }
+
+          stash.stashed = false;
+          stash.note = null;
+          submittedCommands.push(input);
+
+          await json(200, {
+            stashes: stashRecords(state, conversationId, branch.id),
+          });
+          return;
+        }
+
+        const newest = messages
+          .filter(
+            (message) => message.branchId === branch.id && !message.stashed,
+          )
+          .sort((left, right) => right.seq - left.seq)[0];
+
+        if (!newest) {
+          await json(400, {
+            error: `Nothing to stash on ${branch.name}`,
+          });
+          return;
+        }
+
+        const note = input.match(/-m\s+["'](.*?)["']/)?.[1] ?? null;
+
+        newest.stashed = true;
+        newest.note = note;
+        submittedCommands.push(input);
+
+        await json(200, {
+          stashes: stashRecords(state, conversationId, branch.id),
+        });
+        return;
+      }
+
+      if (words[1] === "revert") {
+        const target = words[2] ?? "";
+        const reverted = messages.find((message) => message.id.startsWith(target));
+
+        if (!reverted) {
+          await json(400, { error: `Unknown message: ${target}` });
+          return;
+        }
+
+        if (reverted.reverted) {
+          await json(409, {
+            error: `Message ${target} is already reverted`,
+          });
+          return;
+        }
+
+        reverted.reverted = true;
+        messages.push({
+          seq: messages.length + 1,
+          id: `playwright-revert-${submittedCommands.length + 1}`,
+          author: "grok08",
+          text: `Revert "${reverted.text}"`,
+          command: "git revert",
+          created_at: "2026-10-03T08:44:00.000Z",
+          reverted: false,
+          stashed: false,
+          note: null,
+          branchId: branch.id,
+        });
+        submittedCommands.push(input);
+
+        await json(201, { message: messages[messages.length - 1] });
+        return;
+      }
+
+      if (words[1] === "merge") {
+        const source = branches.find((item) => item.name === words[2]);
+
+        if (!source || source.id === branch.id) {
+          await json(400, {
+            error: source
+              ? "Cannot merge a branch into itself"
+              : `Unknown branch: ${words[2]}`,
+          });
+          return;
+        }
+
+        messages.push({
+          seq: messages.length + 1,
+          id: `playwright-merge-${submittedCommands.length + 1}`,
+          author: "grok08",
+          text: `Merge branch '${source.name}' into ${branch.name}`,
+          command: "git merge",
+          created_at: "2026-10-03T08:45:00.000Z",
+          reverted: false,
+          stashed: false,
+          note: null,
+          branchId: branch.id,
+        });
+        submittedCommands.push(input);
+
+        await json(201, { message: messages[messages.length - 1] });
+        return;
+      }
+
+      const text = parseCommitText(input);
       const message: MockMessage = {
         seq: messages.length + 1,
         id: `playwright-${submittedCommands.length + 1}`,
@@ -318,6 +546,8 @@ export async function openApp(
         created_at: "2026-10-03T08:43:00.000Z",
         reverted: false,
         stashed: false,
+        note: null,
+        branchId: branch.id,
       };
 
       submittedCommands.push(input);
