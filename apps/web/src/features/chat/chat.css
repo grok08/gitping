@@ -603,10 +603,13 @@
 }
 
 .composer-help-button {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   display: grid;
-  flex: 0 0 18px;
+  flex: 0 0 17px;
+  /* The row's line box is 14px. Negating the extra 3px keeps the tray height,
+     and every idle baseline, exactly where it was before this button. */
+  margin-block: -1.5px;
   place-items: center;
   border: 1px solid var(--border);
   border-radius: 50%;

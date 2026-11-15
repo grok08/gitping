@@ -119,6 +119,15 @@
     font-size: 9px;
   }
 
+  /* The 9px help row's line box is 12px, so the button keeps a 12px outer
+     height here and the composer does not move. */
+  .composer-help-button {
+    width: 15px;
+    height: 15px;
+    flex-basis: 15px;
+    margin-block: -1.5px;
+  }
+
   .side-panel {
     top: 64px;
     width: min(320px, calc(100vw - 56px));
