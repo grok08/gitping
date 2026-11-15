@@ -358,6 +358,65 @@ export function createCommandService({
   }
 
   /**
+   * A merge records intent and ancestry on the current branch. Only the two
+   * heads are compared, because the schema has no ancestry graph to resolve a
+   * real common ancestor; that limit is documented in the evidence.
+   */
+  function merge(
+    conversation: Conversation,
+    current: Branch,
+    author: string,
+    input: string,
+    sourceName: string,
+    requestId: string | undefined,
+  ): SendCommandResult {
+    const source = branches.find(conversation.id, sourceName);
+
+    if (!source) {
+      return reject("unknown_branch", `Unknown branch: ${sourceName}`);
+    }
+
+    if (source.id === current.id) {
+      return reject(
+        "invalid_argument",
+        "Cannot merge a branch into itself",
+      );
+    }
+
+    if (
+      source.headMessageId === null ||
+      source.headMessageId === current.headMessageId
+    ) {
+      return reject("invalid_argument", "Already up to date");
+    }
+
+    return persistContent({
+      conversation,
+      branch: current,
+      author,
+      input,
+      text: `Merge branch '${source.name}' into ${current.name}`,
+      verb: "merge",
+      args: { type: "merge", branch: sourceName },
+      requestId,
+      afterWrite(message) {
+        messages.addEvent({
+          messageId: message.id,
+          type: "merged",
+          payload: {
+            sourceBranchId: source.id,
+            sourceBranchName: source.name,
+            targetBranchId: current.id,
+            sourceHeadMessageId: source.headMessageId,
+            targetHeadMessageId: current.headMessageId,
+          },
+          createdAt: message.created_at,
+        });
+      },
+    });
+  }
+
+  /**
    * A target is a full message id or a prefix of one. The prefix has to be at
    * least four characters so a short string cannot stand for a message by
    * accident, and it is resolved inside the conversation it was sent to.
@@ -598,6 +657,23 @@ export function createCommandService({
             author,
             input,
             parsed.target,
+            requestId,
+          );
+        }
+
+        case "merge": {
+          const resolved = contentBranch(conversation, user, options.branch);
+
+          if (!resolved.ok) {
+            return resolved.result;
+          }
+
+          return merge(
+            conversation,
+            resolved.branch,
+            author,
+            input,
+            parsed.branch,
             requestId,
           );
         }

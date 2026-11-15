@@ -154,6 +154,23 @@ describe("GitPing command parser", () => {
     });
   });
 
+  test("git merge", () => {
+    expect(parseCommand("git merge weekend")).toEqual({
+      type: "merge",
+      branch: "weekend",
+    });
+  });
+
+  test("rejects malformed git merge forms", () => {
+    expect(() => parseCommand("git merge")).toThrow("Use git merge <branch>");
+    expect(() => parseCommand("git merge one two")).toThrow(
+      "Use git merge <branch>",
+    );
+    expect(() => parseCommand("git merge --no-ff weekend")).toThrow(
+      "Use git merge <branch>",
+    );
+  });
+
   test("git stash", () => {
     expect(parseCommand("git stash")).toEqual({
       type: "stash-push",

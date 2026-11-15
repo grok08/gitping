@@ -778,6 +778,77 @@ describe("revert HTTP API", () => {
   });
 });
 
+describe("merge HTTP API", () => {
+  test("answers a merge with the merge message", async () => {
+    const app = createTestApp();
+
+    await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: 'git commit -m "weekend work"', branch: "weekend" }),
+    );
+
+    const response = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git merge weekend", branch: "main" }),
+    );
+
+    expect(response.status).toBe(201);
+
+    const body = (await response.json()) as {
+      message: { text: string; command: string };
+    };
+
+    expect(body.message).toMatchObject({
+      text: "Merge branch 'weekend' into main",
+      command: "git merge",
+    });
+
+    const listed = (await (
+      await app.request("/conversations/conv-engineering/messages")
+    ).json()) as Array<{ text: string }>;
+
+    expect(listed.map((message) => message.text)).toEqual([
+      "weekend work",
+      "Merge branch 'weekend' into main",
+    ]);
+  });
+
+  test("rejects a self merge and an up-to-date merge with 400", async () => {
+    const app = createTestApp();
+
+    const self = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git merge main", branch: "main" }),
+    );
+
+    expect(self.status).toBe(400);
+    expect(await self.json()).toEqual({
+      error: "Cannot merge a branch into itself",
+    });
+
+    const upToDate = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git merge weekend", branch: "main" }),
+    );
+
+    expect(upToDate.status).toBe(400);
+    expect(await upToDate.json()).toEqual({ error: "Already up to date" });
+
+    const unknown = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git merge release", branch: "main" }),
+    );
+
+    expect(unknown.status).toBe(400);
+    expect(await unknown.json()).toEqual({ error: "Unknown branch: release" });
+  });
+});
+
 describe("realtime upgrade guard", () => {
   test("rejects an upgrade from an origin the HTTP CORS policy also rejects", async () => {
     const response = await createTestApp().request(

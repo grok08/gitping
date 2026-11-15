@@ -813,3 +813,142 @@ describe("revert", () => {
     expect(listed[0]?.reverted).toBe(true);
   });
 });
+
+describe("merge", () => {
+  test("creates a merge message on the current branch with both heads recorded", () => {
+    const { db, messages, commands } = createTestCommandService();
+    const target = sentMessage(
+      commands.send('git commit -m "main work"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+    const source = sentMessage(
+      commands.send('git commit -m "weekend work"', "rahul", {
+        conversationId: "conv-engineering",
+        branch: "weekend",
+      }),
+    );
+
+    const result = commands.send("git merge weekend", "grok08", {
+      conversationId: "conv-engineering",
+      branch: "main",
+    });
+
+    const mergeMessage = sentMessage(result);
+
+    expect(mergeMessage).toMatchObject({
+      text: "Merge branch 'weekend' into main",
+      command: "git merge",
+      reverted: false,
+      stashed: false,
+    });
+
+    const event = db
+      .query(
+        `SELECT payload FROM message_events
+         WHERE message_id = $id AND type = 'merged'`,
+      )
+      .get({ $id: mergeMessage.id }) as { payload: string };
+
+    expect(JSON.parse(event.payload)).toEqual({
+      sourceBranchId: "branch-conv-engineering-weekend",
+      sourceBranchName: "weekend",
+      targetBranchId: "branch-conv-engineering-main",
+      sourceHeadMessageId: source.id,
+      targetHeadMessageId: target.id,
+    });
+
+    const head = db
+      .query(
+        "SELECT head_message_id FROM branches WHERE id = 'branch-conv-engineering-main'",
+      )
+      .get() as { head_message_id: string };
+
+    expect(head.head_message_id).toBe(mergeMessage.id);
+    expect(messages.list("conv-engineering")).toHaveLength(3);
+  });
+
+  test("does not copy the source branch's messages", () => {
+    const { messages, commands } = createTestCommandService();
+
+    commands.send('git commit -m "weekend only"', "rahul", {
+      conversationId: "conv-engineering",
+      branch: "weekend",
+    });
+    commands.send("git merge weekend", "grok08", {
+      conversationId: "conv-engineering",
+      branch: "main",
+    });
+
+    const listed = messages.list("conv-engineering");
+
+    expect(listed.map((message) => message.text)).toEqual([
+      "weekend only",
+      "Merge branch 'weekend' into main",
+    ]);
+    expect(listed.map((message) => message.reverted)).toEqual([false, false]);
+  });
+
+  test("rejects an unknown branch and a merge into itself", () => {
+    const { commands } = createTestCommandService();
+
+    expect(
+      commands.send("git merge release", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "unknown_branch",
+      error: "Unknown branch: release",
+    });
+
+    expect(
+      commands.send("git merge main", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "invalid_argument",
+      error: "Cannot merge a branch into itself",
+    });
+  });
+
+  test("reports already up to date when the source head is null or equal", () => {
+    const { commands } = createTestCommandService();
+
+    // Both heads are null on the seeded branches.
+    expect(
+      commands.send("git merge weekend", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "invalid_argument",
+      error: "Already up to date",
+    });
+
+    // A branch created at main's head has the same head, so there is nothing
+    // to merge.
+    sentMessage(
+      commands.send('git commit -m "shared head"', "grok08", {
+        conversationId: "conv-engineering",
+        branch: "main",
+      }),
+    );
+    commands.send("git branch shared-head", "grok08", {
+      conversationId: "conv-engineering",
+      branch: "main",
+    });
+
+    expect(
+      commands.send("git merge shared-head", "grok08", {
+        conversationId: "conv-engineering",
+        branch: "main",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "invalid_argument",
+      error: "Already up to date",
+    });
+  });
+});

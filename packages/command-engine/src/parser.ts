@@ -49,6 +49,10 @@ export type GitCommand =
       target: string;
     }
   | {
+      type: "merge";
+      branch: string;
+    }
+  | {
       type: "stash-push";
       message?: string;
     }
@@ -322,6 +326,17 @@ export function parseCommand(input: string): GitCommand {
       return {
         type: "revert",
         target: requireArgument(tokens, 2, "message ID"),
+      };
+    }
+
+    case "merge": {
+      if (tokens.length !== 3) {
+        throw new Error("Use git merge <branch>");
+      }
+
+      return {
+        type: "merge",
+        branch: requireArgument(tokens, 2, "branch name"),
       };
     }
 
