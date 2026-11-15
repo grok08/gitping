@@ -397,3 +397,31 @@ describe("conversation HTTP API", () => {
     }
   });
 });
+
+describe("realtime upgrade guard", () => {
+  test("rejects an upgrade from an origin the HTTP CORS policy also rejects", async () => {
+    const response = await createTestApp().request(
+      "/conversations/conv-engineering/events",
+      { headers: { origin: "http://evil.example" } },
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "Origin not allowed" });
+  });
+
+  test("lets an allowed or missing origin through to the conversation check", async () => {
+    const app = createTestApp();
+
+    for (const headers of [
+      { origin: "http://127.0.0.1:4173" },
+      {},
+    ] as Array<Record<string, string>>) {
+      const response = await app.request(
+        "/conversations/conv-missing/events",
+        { headers },
+      );
+
+      expect(response.status).toBe(404);
+    }
+  });
+});

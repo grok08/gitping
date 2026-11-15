@@ -460,6 +460,9 @@ Rules the server and client rely on:
 - The event is sent only after the message transaction commits. A rolled-back write is never broadcast.
 - Both `POST /conversations/:id/commands` and `POST /commands` broadcast.
 - The event goes only to clients subscribed to that conversation.
+- The upgrade checks the `Origin` header against the same allowlist as CORS, because CORS does not apply to WebSocket upgrades.
+- The client pings every 25 s and reconnects if no frame arrives within 10 s, so a silent socket cannot keep looking `Live`.
+- A client that cannot drain its socket past 1 MiB is closed, so it reconnects and catches up instead of growing a buffer.
 - `seq` is the ordering key; a client sorts by it and de-duplicates by message id.
 - The client renders confirmed messages only, so it never shows a pending copy next to the real one.
 - On reconnect the client refetches `GET /conversations/:id/messages` and merges it, which closes gaps without duplicates.

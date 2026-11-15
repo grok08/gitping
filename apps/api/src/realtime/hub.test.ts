@@ -103,8 +103,34 @@ describe("message hub", () => {
     expect(healthy.received).toHaveLength(2);
   });
 
-  test("publishing with no subscribers is a no-op", () => {
+  test("drops a subscriber whose socket cannot drain, without affecting others", () => {
     const hub = createMessageHub();
+    const healthy = createClient("conv-engineering");
+    const closed: number[] = [];
+    const slow: RealtimeClient = {
+      id: "slow",
+      conversationId: "conv-engineering",
+      send() {
+        // The write is accepted, but the socket never drains.
+      },
+      overloaded() {
+        return true;
+      },
+      close(code) {
+        closed.push(code ?? 0);
+      },
+    };
+
+    hub.subscribe(healthy.client);
+    hub.subscribe(slow);
+    hub.publish(messageCreated("conv-engineering", 5));
+
+    expect(healthy.received).toHaveLength(1);
+    expect(closed).toEqual([1013]);
+    expect(hub.subscriberCount("conv-engineering")).toBe(1);
+  });
+
+  test("publishing with no subscribers is a no-op", () => {    const hub = createMessageHub();
 
     expect(() => hub.publish(messageCreated("conv-engineering", 1))).not.toThrow();
     expect(hub.clientCount()).toBe(0);

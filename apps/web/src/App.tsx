@@ -101,6 +101,21 @@ function App() {
   }, [activeId]);
 
   /**
+   * A preview is the newest message in the conversation, so it may only move
+   * forward in `seq`. An event delivered out of order must not rewind it.
+   */
+  function advancePreview(conversationId: string, text: string, seq: number) {
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === conversationId &&
+        seq > (conversation.previewSeq ?? -1)
+          ? { ...conversation, preview: text, previewSeq: seq }
+          : conversation,
+      ),
+    );
+  }
+
+  /**
    * Catch-up path. On every socket open, including a reconnect, the client
    * refetches persisted history and merges it. SQLite is the source of truth,
    * so nothing that was committed during an outage can be missed, and the
@@ -123,14 +138,7 @@ function App() {
       const latest = data[data.length - 1];
 
       if (latest) {
-        setConversations((current) =>
-          current.map((conversation) =>
-            conversation.id === conversationId &&
-            conversation.preview !== latest.text
-              ? { ...conversation, preview: latest.text }
-              : conversation,
-          ),
-        );
+        advancePreview(conversationId, latest.text, latest.seq);
       }
     } catch {
       // The next reconnect retries. Sending still works over HTTP meanwhile.
@@ -155,14 +163,7 @@ function App() {
       const confirmed = fromConfirmedMessage(message);
 
       setMessages((current) => mergeMessages(current, [confirmed]));
-
-      setConversations((current) =>
-        current.map((conversation) =>
-          conversation.id === conversationId
-            ? { ...conversation, preview: confirmed.text }
-            : conversation,
-        ),
-      );
+      advancePreview(conversationId, confirmed.text, confirmed.seq);
     },
   });
 
@@ -384,6 +385,9 @@ function App() {
   }
 
   function selectConversation(id: string) {
+    // Written here as well as in the effect: a frame from the previous socket
+    // must not be merged into the conversation being opened.
+    activeIdRef.current = id;
     setActiveConversationId(id);
     setBranch("main");
 
@@ -427,14 +431,7 @@ function App() {
       const confirmed = fromConfirmedMessage(message);
 
       setMessages((current) => mergeMessages(current, [confirmed]));
-
-      setConversations((current) =>
-        current.map((conversation) =>
-          conversation.id === activeId
-            ? { ...conversation, preview: confirmed.text }
-            : conversation,
-        ),
-      );
+      advancePreview(activeId, confirmed.text, confirmed.seq);
 
       setBranches((current) =>
         current.map((item) =>

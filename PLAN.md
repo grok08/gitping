@@ -288,7 +288,7 @@ Do this only after the HTTP persistence model is stable.
 
 Complete. `GET /conversations/:id/events` upgrades to a WebSocket scoped to one conversation. A commit is written inside its transaction and broadcast only after it commits, from both `POST /conversations/:id/commands` and the compatibility `POST /commands`. The browser keeps SQLite as the source of truth: no optimistic message is rendered, broadcasts and HTTP responses merge by server id, order comes from `messages.seq`, and every reconnect refetches persisted history and merges it. The chat header shows `Live`, `Connecting`, `Reconnecting`, or `Offline`, with bounded exponential backoff.
 
-No schema change was needed. `messages.seq` and `message_events` already covered ordering and the event hook, so `PRAGMA user_version` stays at 1. Evidence, including the deliberate visual parity update, is in `evidence/phase-4/README.md`.
+No schema change was needed. `messages.seq` and `message_events` already covered ordering and the event hook, so `PRAGMA user_version` stays at 1. A hardening pass added a client heartbeat, an origin check on the upgrade, buffer-overflow eviction, a frame-to-conversation guard, monotonic previews, jittered reconnects, and per-test conversation isolation. Evidence, including the deliberate visual parity update, is in `evidence/phase-4/README.md`.
 
 ---
 

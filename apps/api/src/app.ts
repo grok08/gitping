@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Database } from "bun:sqlite";
+import { allowedOrigins } from "./allowed-origins";
 import { createMessageHub } from "./realtime/hub";
 import type { MessageHub } from "./realtime/hub";
 import { createRealtimeRoutes } from "./realtime/websocket";
@@ -14,13 +15,6 @@ import { createCommandRoutes } from "./routes/commands";
 import { createConversationRoutes } from "./routes/conversations";
 import { createHealthRoutes } from "./routes/health";
 import { createMessageRoutes } from "./routes/messages";
-
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:4173",
-  "http://127.0.0.1:4173",
-];
 
 export function createApp(
   db: Database,

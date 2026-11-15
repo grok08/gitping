@@ -99,11 +99,19 @@ function messageText(page: Page, text: string) {
 test("a commit from one client is delivered to another client and survives a reload", async ({
   browser,
 }) => {
+  const stamp = Date.now().toString(36);
+  const channelName = `phase-four-live-${stamp}`;
+  const text = `phase four live ${stamp}`;
   const sender = await openClient(browser);
-  const receiver = await openClient(browser);
-  const text = `phase four live ${Date.now().toString(36)}`;
+  let receiver: Awaited<ReturnType<typeof openClient>> | null = null;
 
   try {
+    // A dedicated conversation keeps this proof independent of the other tests
+    // that write to `engineering` in parallel.
+    await createChannel(sender.page, channelName);
+    receiver = await openClient(browser);
+    await openChannel(receiver.page, channelName);
+
     await sendCommit(sender.page, text);
 
     await expect(messageText(sender.page, text)).toBeVisible();
@@ -127,6 +135,7 @@ test("a commit from one client is delivered to another client and survives a rel
     await saveScreenshot(receiver.page, "live-receiver-no-reload");
 
     await receiver.page.reload();
+    await openChannel(receiver.page, channelName);
 
     await expect(messageText(receiver.page, text)).toHaveCount(1, {
       timeout: 15_000,
@@ -141,18 +150,24 @@ test("a commit from one client is delivered to another client and survives a rel
     await saveScreenshot(receiver.page, "live-receiver-after-reload");
   } finally {
     await sender.context.close();
-    await receiver.context.close();
+    await receiver?.context.close();
   }
 });
 
 test("a client that goes offline catches up exactly once when it returns", async ({
   browser,
 }) => {
+  const stamp = Date.now().toString(36);
+  const channelName = `phase-four-reconnect-${stamp}`;
+  const text = `phase four reconnect ${stamp}`;
   const sender = await openClient(browser);
-  const receiver = await openClient(browser, { interceptSocket: true });
-  const text = `phase four reconnect ${Date.now().toString(36)}`;
+  let receiver: Awaited<ReturnType<typeof openClient>> | null = null;
 
   try {
+    await createChannel(sender.page, channelName);
+    receiver = await openClient(browser, { interceptSocket: true });
+    await openChannel(receiver.page, channelName);
+
     await receiver.context.setOffline(true);
     receiver.transport.outage = true;
     await receiver.transport.current?.close({
@@ -192,7 +207,7 @@ test("a client that goes offline catches up exactly once when it returns", async
     await saveScreenshot(receiver.page, "reconnect-caught-up-once");
   } finally {
     await sender.context.close();
-    await receiver.context.close();
+    await receiver?.context.close();
   }
 });
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { conversationEventsUrl } from "../lib/api";
-import { nextReconnectDelay, parseMessageEvent } from "../lib/realtime";
+import { createHeartbeat } from "../lib/heartbeat";
+import { nextReconnectDelay, parseMessageEvent, pingFrame } from "../lib/realtime";
 import type { CreatedMessage } from "../types/message";
 
 export type ConnectionStatus =
@@ -8,18 +9,6 @@ export type ConnectionStatus =
   | "live"
   | "reconnecting"
   | "offline";
-
-/**
- * A malformed URL throws synchronously. The reconnect loop treats that as any
- * other failure instead of letting it escape into the render pass.
- */
-function createSocket(conversationId: string): WebSocket | null {
-  try {
-    return new WebSocket(conversationEventsUrl(conversationId));
-  } catch {
-    return null;
-  }
-}
 
 type ConversationSocketOptions = {
   conversationId: string;
@@ -33,9 +22,22 @@ type ConversationSocketOptions = {
 };
 
 /**
- * WebSocket lifecycle for the active conversation: open, close, error, and a
- * bounded reconnect loop. The socket is transport only; persistence stays on
- * HTTP, which keeps working while the socket is down.
+ * A malformed URL throws synchronously. The reconnect loop treats that as any
+ * other failure instead of letting it escape into the render pass.
+ */
+function createSocket(conversationId: string): WebSocket | null {
+  try {
+    return new WebSocket(conversationEventsUrl(conversationId));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * WebSocket lifecycle for the active conversation: open, close, error, a
+ * bounded reconnect loop, and a heartbeat so a silent socket cannot pass for a
+ * live one. The socket is transport only; persistence stays on HTTP, which
+ * keeps working while the socket is down.
  */
 export function useConversationSocket({
   conversationId,
@@ -61,6 +63,18 @@ export function useConversationSocket({
     let attempt = 0;
     let openedOnce = false;
     let disposed = false;
+
+    const heartbeat = createHeartbeat({
+      onPing() {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(pingFrame());
+        }
+      },
+      onTimeout() {
+        // Close on silence so the normal reconnect path takes over.
+        socket?.close();
+      },
+    });
 
     function report(status: ConnectionStatus) {
       if (!disposed) {
@@ -108,19 +122,26 @@ export function useConversationSocket({
         attempt = 0;
         openedOnce = true;
         report("live");
+        heartbeat.start();
         handlers.current.onCatchUp(conversationId);
       });
 
       current.addEventListener("message", (event) => {
+        heartbeat.noteActivity();
+
         if (typeof event.data !== "string") {
           return;
         }
 
-        const message = parseMessageEvent(event.data);
+        const parsed = parseMessageEvent(event.data);
 
-        if (message) {
-          handlers.current.onMessage(message, conversationId);
+        // The socket is already scoped to one conversation, and this is the
+        // second line of defence: a frame for another room is dropped here.
+        if (!parsed || parsed.conversationId !== conversationId) {
+          return;
         }
+
+        handlers.current.onMessage(parsed.message, conversationId);
       });
 
       current.addEventListener("error", () => {
@@ -128,6 +149,8 @@ export function useConversationSocket({
       });
 
       current.addEventListener("close", () => {
+        heartbeat.stop();
+
         if (socket === current) {
           socket = null;
         }
@@ -160,6 +183,7 @@ export function useConversationSocket({
     return () => {
       disposed = true;
       clearTimer();
+      heartbeat.stop();
       window.removeEventListener("online", retryImmediately);
       socket?.close();
     };

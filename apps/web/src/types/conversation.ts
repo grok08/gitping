@@ -7,6 +7,8 @@ export type Conversation = {
   unread?: number;
   members?: number;
   preview?: string;
+  /** Commit order of the message behind `preview`, so it only moves forward. */
+  previewSeq?: number;
 };
 
 export type ApiConversation = {

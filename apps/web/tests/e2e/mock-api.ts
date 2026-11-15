@@ -158,8 +158,17 @@ export async function openApp(
         }, 0);
       }
 
-      send() {
-        // The mocked UI has no server to talk to.
+      send(data?: string) {
+        // Answer keepalives so the mocked UI never trips the heartbeat.
+        if (typeof data === "string" && data.includes('"ping"')) {
+          window.setTimeout(() => {
+            this.dispatchEvent(
+              new MessageEvent("message", {
+                data: JSON.stringify({ type: "pong" }),
+              }),
+            );
+          }, 0);
+        }
       }
 
       close() {

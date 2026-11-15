@@ -5,6 +5,8 @@ export type RealtimeClient = {
   conversationId: string;
   send: (payload: string) => void;
   close?: (code?: number, reason?: string) => void;
+  /** True when the socket's outgoing buffer is too full to take more. */
+  overloaded?: () => boolean;
 };
 
 export type MessageHub = RealtimePublisher & {
@@ -69,6 +71,19 @@ export function createMessageHub(): MessageHub {
         try {
           client.send(payload);
         } catch {
+          unsubscribe(client);
+          continue;
+        }
+
+        if (client.overloaded?.()) {
+          // A socket that cannot drain would grow memory forever. Closing it
+          // makes the browser reconnect and catch up instead.
+          try {
+            client.close?.(1013, "client too slow");
+          } catch {
+            // Already gone; removing it from the registry is enough.
+          }
+
           unsubscribe(client);
         }
       }
