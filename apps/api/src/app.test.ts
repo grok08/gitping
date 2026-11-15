@@ -849,6 +849,129 @@ describe("merge HTTP API", () => {
   });
 });
 
+describe("stash HTTP API", () => {
+  test("answers stash commands with the stash list and serves it over GET", async () => {
+    const app = createTestApp();
+
+    const commit = (await (
+      await postConversationCommand(
+        app,
+        "conv-engineering",
+        JSON.stringify({ input: 'git commit -m "set this aside"' }),
+      )
+    ).json()) as { message: { id: string; createdAt: string } };
+
+    const stash = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: 'git stash push -m "later"' }),
+    );
+
+    expect(stash.status).toBe(200);
+    expect(await stash.json()).toEqual({
+      stashes: [
+        {
+          id: commit.message.id,
+          text: "set this aside",
+          note: "later",
+          createdAt: commit.message.createdAt,
+        },
+      ],
+    });
+
+    const listed = (await (
+      await app.request("/conversations/conv-engineering/stashes")
+    ).json()) as Array<Record<string, unknown>>;
+
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({ id: commit.message.id, note: "later" });
+
+    const list = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git stash list" }),
+    );
+
+    expect(list.status).toBe(200);
+    expect(await list.json()).toEqual({
+      stashes: [
+        {
+          id: commit.message.id,
+          text: "set this aside",
+          note: "later",
+          createdAt: commit.message.createdAt,
+        },
+      ],
+    });
+
+    const pop = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git stash pop" }),
+    );
+
+    expect(pop.status).toBe(200);
+    expect(await pop.json()).toEqual({ stashes: [] });
+
+    const emptied = (await (
+      await app.request("/conversations/conv-engineering/stashes")
+    ).json()) as unknown[];
+
+    expect(emptied).toEqual([]);
+
+    const history = (await (
+      await app.request("/conversations/conv-engineering/messages")
+    ).json()) as Array<{ stashed: boolean }>;
+
+    expect(history).toHaveLength(1);
+    expect(history[0]?.stashed).toBe(false);
+  });
+
+  test("rejects stash failures with 400 and an unknown conversation with 404", async () => {
+    const app = createTestApp();
+
+    const nothing = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git stash" }),
+    );
+
+    expect(nothing.status).toBe(400);
+    expect(await nothing.json()).toEqual({
+      error: "Nothing to stash on main",
+    });
+
+    const emptyPop = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git stash pop" }),
+    );
+
+    expect(emptyPop.status).toBe(400);
+    expect(await emptyPop.json()).toEqual({
+      error: "No stash to pop on main",
+    });
+
+    const unknownPop = await postConversationCommand(
+      app,
+      "conv-engineering",
+      JSON.stringify({ input: "git stash pop ffff" }),
+    );
+
+    expect(unknownPop.status).toBe(400);
+    expect(await unknownPop.json()).toEqual({
+      error: "Unknown stash: ffff",
+    });
+
+    const missing = await app.request("/conversations/conv-missing/stashes");
+
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toEqual({
+      error: "Unknown conversation: conv-missing",
+    });
+  });
+});
+
 describe("realtime upgrade guard", () => {
   test("rejects an upgrade from an origin the HTTP CORS policy also rejects", async () => {
     const response = await createTestApp().request(

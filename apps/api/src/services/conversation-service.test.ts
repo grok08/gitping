@@ -404,4 +404,51 @@ describe("conversation service", () => {
     expect(grok.value.find((branch) => branch.current)?.name).toBe("weekend");
     expect(rahul.value.find((branch) => branch.current)?.name).toBe("main");
   });
+
+  test("returns the stash of the viewer's current branch", () => {
+    const { db, conversations } = createTestConversationService();
+    const { commands } = createTestCommandService(db);
+
+    sentMessage(
+      commands.send('git commit -m "main work"', "grok08", {
+        conversationId: "conv-engineering",
+        branch: "main",
+      }),
+    );
+    sentMessage(
+      commands.send('git commit -m "weekend work"', "rahul", {
+        conversationId: "conv-engineering",
+        branch: "weekend",
+      }),
+    );
+
+    commands.send("git stash", "grok08", {
+      conversationId: "conv-engineering",
+      branch: "weekend",
+    });
+
+    expect(conversations.stashes("conv-engineering", "grok08")).toEqual({
+      ok: true,
+      value: [],
+    });
+
+    commands.send("git switch weekend", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    expect(conversations.stashes("conv-engineering", "grok08")).toMatchObject({
+      ok: true,
+      value: [{ text: "weekend work", note: null }],
+    });
+
+    expect(conversations.stashes("conv-engineering", "rahul")).toMatchObject({
+      ok: true,
+      value: [],
+    });
+
+    expect(conversations.stashes("conv-missing", "grok08")).toMatchObject({
+      ok: false,
+      reason: "not_found",
+    });
+  });
 });

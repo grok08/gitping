@@ -9,6 +9,7 @@ import type {
   ConversationMemberRecord,
   ConversationSummary,
   MessageRow,
+  StashRecord,
 } from "../types/http";
 
 export type ConversationFailureReason = "invalid" | "duplicate" | "not_found";
@@ -194,6 +195,29 @@ export function createConversationService({
       }
 
       return { ok: true, value: conversations.listMembers(conversationId) };
+    },
+
+    stashes(
+      conversationId: string,
+      viewerHandle: string,
+    ): ConversationResult<StashRecord[]> {
+      const missing = requireConversation(conversationId);
+
+      if (missing) {
+        return missing;
+      }
+
+      const viewer = users.findByHandle(viewerHandle);
+      const current = viewer
+        ? branches.currentFor(conversationId, viewer.id)
+        : null;
+
+      return {
+        ok: true,
+        value: current
+          ? messages.listStashed(conversationId, current.id)
+          : [],
+      };
     },
 
     branches(

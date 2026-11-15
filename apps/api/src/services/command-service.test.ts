@@ -952,3 +952,283 @@ describe("merge", () => {
     });
   });
 });
+
+describe("stash", () => {
+  test("stashes the newest message on the current branch without a message", () => {
+    const { messages, events, commands } = createTestCommandService();
+    const first = sentMessage(
+      commands.send('git commit -m "first"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+
+    const result = commands.send("git stash", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    if (!result.ok || result.kind !== "stashes") {
+      throw new Error("expected a stash list");
+    }
+
+    expect(result.stashes).toEqual([
+      {
+        id: first.id,
+        text: "first",
+        note: null,
+        createdAt: first.createdAt,
+      },
+    ]);
+
+    // Nothing was deleted and no message was created.
+    expect(messages.list("conv-engineering")).toHaveLength(1);
+    expect(messages.findById(first.id)?.stashed).toBe(true);
+
+    expect(events.events.map((event) => event.type)).toEqual([
+      "message.created",
+      "message.updated",
+    ]);
+    expect(events.events[1]).toMatchObject({
+      conversationId: "conv-engineering",
+      seq: first.seq,
+      message: { id: first.id, stashed: true, reverted: false },
+    });
+  });
+
+  test("records the note from git stash push -m", () => {
+    const { commands } = createTestCommandService();
+    const message = sentMessage(
+      commands.send('git commit -m "with a note"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+
+    const result = commands.send('git stash push -m "for later"', "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    if (!result.ok || result.kind !== "stashes") {
+      throw new Error("expected a stash list");
+    }
+
+    expect(result.stashes).toEqual([
+      {
+        id: message.id,
+        text: "with a note",
+        note: "for later",
+        createdAt: message.createdAt,
+      },
+    ]);
+  });
+
+  test("walks back through the branch one message per stash, newest first", () => {
+    const { commands } = createTestCommandService();
+
+    const first = sentMessage(
+      commands.send('git commit -m "one"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+    const second = sentMessage(
+      commands.send('git commit -m "two"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+
+    commands.send("git stash", "grok08", { conversationId: "conv-engineering" });
+    const result = commands.send("git stash", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    if (!result.ok || result.kind !== "stashes") {
+      throw new Error("expected a stash list");
+    }
+
+    expect(result.stashes.map((stash) => stash.id)).toEqual([
+      second.id,
+      first.id,
+    ]);
+  });
+
+  test("reports nothing to stash on a branch with no messages", () => {
+    const { commands } = createTestCommandService();
+
+    expect(
+      commands.send("git stash", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "invalid_argument",
+      error: "Nothing to stash on main",
+    });
+
+    expect(
+      commands.send("git stash", "grok08", {
+        conversationId: "conv-engineering",
+        branch: "weekend",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "invalid_argument",
+      error: "Nothing to stash on weekend",
+    });
+  });
+
+  test("lists only the current branch's stash", () => {
+    const { commands } = createTestCommandService();
+
+    sentMessage(
+      commands.send('git commit -m "weekend work"', "grok08", {
+        conversationId: "conv-engineering",
+        branch: "weekend",
+      }),
+    );
+    commands.send("git stash", "grok08", {
+      conversationId: "conv-engineering",
+      branch: "weekend",
+    });
+
+    const main = commands.send("git stash list", "grok08", {
+      conversationId: "conv-engineering",
+      branch: "main",
+    });
+    const weekend = commands.send("git stash list", "grok08", {
+      conversationId: "conv-engineering",
+      branch: "weekend",
+    });
+
+    expect(main).toEqual({ ok: true, kind: "stashes", stashes: [] });
+    expect(weekend).toMatchObject({
+      ok: true,
+      kind: "stashes",
+      stashes: [{ text: "weekend work" }],
+    });
+  });
+
+  test("pops the newest stash and clears its flag", () => {
+    const { messages, events, commands } = createTestCommandService();
+    const message = sentMessage(
+      commands.send('git commit -m "bring me back"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+
+    commands.send("git stash", "grok08", { conversationId: "conv-engineering" });
+
+    const result = commands.send("git stash pop", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    expect(result).toEqual({ ok: true, kind: "stashes", stashes: [] });
+    expect(messages.findById(message.id)?.stashed).toBe(false);
+    expect(messages.list("conv-engineering")).toHaveLength(1);
+
+    const unstashed = events.events.at(-1);
+
+    expect(unstashed).toMatchObject({
+      type: "message.updated",
+      conversationId: "conv-engineering",
+      message: { id: message.id, stashed: false },
+    });
+  });
+
+  test("pops a named stash by id or unique prefix", () => {
+    const { db, messages, commands } = createTestCommandService();
+    const messagesRepository = createMessageRepository(db);
+    const insert = (id: string) =>
+      messagesRepository.insert({
+        id,
+        conversationId: "conv-engineering",
+        branchId: "branch-conv-engineering-main",
+        authorId: "user-grok08",
+        text: `note ${id}`,
+        verb: "commit",
+        raw: `git commit -m "note ${id}"`,
+        args: JSON.stringify({ type: "commit", message: id, amend: false }),
+        createdAt: new Date().toISOString(),
+      });
+
+    insert("abcd1111-0000-0000-0000-000000000000");
+    insert("efgh2222-0000-0000-0000-000000000000");
+
+    commands.send("git stash", "grok08", { conversationId: "conv-engineering" });
+    commands.send("git stash", "grok08", { conversationId: "conv-engineering" });
+
+    const result = commands.send("git stash pop abcd", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    if (!result.ok || result.kind !== "stashes") {
+      throw new Error("expected a stash list");
+    }
+
+    expect(result.stashes.map((stash) => stash.id)).toEqual([
+      "efgh2222-0000-0000-0000-000000000000",
+    ]);
+    expect(messages.findById("abcd1111-0000-0000-0000-000000000000")?.stashed).toBe(
+      false,
+    );
+  });
+
+  test("rejects an unknown stash id and an empty pop", () => {
+    const { commands } = createTestCommandService();
+
+    expect(
+      commands.send("git stash pop", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "invalid_argument",
+      error: "No stash to pop on main",
+    });
+
+    sentMessage(
+      commands.send('git commit -m "stash me"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+    commands.send("git stash", "grok08", { conversationId: "conv-engineering" });
+
+    expect(
+      commands.send("git stash pop ffff", "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "invalid_argument",
+      error: "Unknown stash: ffff",
+    });
+  });
+
+  test("a stashed message is still in history and is not the next stash target", () => {
+    const { messages, commands } = createTestCommandService();
+    const older = sentMessage(
+      commands.send('git commit -m "older"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+    const newer = sentMessage(
+      commands.send('git commit -m "newer"', "grok08", {
+        conversationId: "conv-engineering",
+      }),
+    );
+
+    commands.send("git stash", "grok08", { conversationId: "conv-engineering" });
+
+    const history = messages.list("conv-engineering");
+
+    expect(history.map((message) => message.id)).toEqual([older.id, newer.id]);
+    expect(history.map((message) => message.stashed)).toEqual([false, true]);
+
+    const next = commands.send("git stash", "grok08", {
+      conversationId: "conv-engineering",
+    });
+
+    expect(next).toMatchObject({
+      ok: true,
+      kind: "stashes",
+      stashes: [{ id: newer.id }, { id: older.id }],
+    });
+  });
+});

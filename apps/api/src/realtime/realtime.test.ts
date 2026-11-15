@@ -412,6 +412,86 @@ describe("realtime delivery", () => {
     }
   });
 
+  test("broadcasts stash and pop state to the conversation and no other", async () => {
+    const harness = startHarness();
+    const first = await harness.connect("conv-engineering");
+    const second = await harness.connect("conv-engineering");
+    const elsewhere = await harness.connect("conv-weekend");
+
+    try {
+      const commitResponse = await harness.post(
+        "/conversations/conv-engineering/commands",
+        { input: 'git commit -m "set aside"' },
+      );
+
+      expect(commitResponse.status).toBe(201);
+
+      const commit = await sentMessage(commitResponse);
+
+      await first.next();
+      await second.next();
+
+      const stashResponse = await harness.post(
+        "/conversations/conv-engineering/commands",
+        { input: "git stash" },
+      );
+
+      expect(stashResponse.status).toBe(200);
+
+      const stashed = (await stashResponse.json()) as {
+        stashes: Array<{ id: string; text: string }>;
+      };
+
+      expect(stashed.stashes).toEqual([
+        expect.objectContaining({ id: commit.id, text: "set aside" }),
+      ]);
+
+      for (const client of [first, second]) {
+        const frame = await client.next();
+
+        expect(frame.type).toBe("message.updated");
+        expect(frame.seq).toBe(commit.seq);
+        expect(frame.message).toMatchObject({
+          id: commit.id,
+          stashed: true,
+          reverted: false,
+        });
+      }
+
+      const popResponse = await harness.post(
+        "/conversations/conv-engineering/commands",
+        { input: "git stash pop" },
+      );
+
+      expect(popResponse.status).toBe(200);
+
+      for (const client of [first, second]) {
+        const frame = await client.next();
+
+        expect(frame.type).toBe("message.updated");
+        expect(frame.message).toMatchObject({
+          id: commit.id,
+          stashed: false,
+        });
+      }
+
+      expect(await elsewhere.drain()).toEqual([]);
+
+      const listed = (await (
+        await harness.get("/conversations/conv-engineering/messages")
+      ).json()) as Array<{ id: string; stashed: boolean }>;
+
+      expect(listed.find((message) => message.id === commit.id)?.stashed).toBe(
+        false,
+      );
+    } finally {
+      first.close();
+      second.close();
+      elsewhere.close();
+      harness.stop();
+    }
+  });
+
   test("removes a client from the registry when it disconnects", async () => {
     const harness = startHarness();
     const client = await harness.connect("conv-engineering");

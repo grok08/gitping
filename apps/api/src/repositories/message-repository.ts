@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { MessageEventType, NewMessage } from "../types/domain";
-import type { MessageRow } from "../types/http";
+import type { MessageRow, StashRecord } from "../types/http";
 
 /**
  * SQLite has no boolean type, so the derived flags arrive as 0 or 1.
@@ -27,8 +27,19 @@ function toMessageRow(row: RawMessageRow): MessageRow {
  * Message state is derived from the event set, never from a mutable column, so
  * a flag cannot drift from the events that produced it. Both expressions are
  * pure functions of the set, which makes the answer independent of the order
- * the events were written in.
+ * the events were written in. One definition is used for the selected column
+ * and for the "not stashed" filter, so the two cannot disagree.
  */
+const stashedExpression = `
+  EXISTS (
+    SELECT 1 FROM message_events e
+    WHERE e.message_id = m.id AND e.type = 'stashed'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM message_events e
+    WHERE e.message_id = m.id AND e.type = 'unstashed'
+  )
+`;
+
 const selectMessage = `
   SELECT
     m.seq,
@@ -41,17 +52,32 @@ const selectMessage = `
       SELECT 1 FROM message_events e
       WHERE e.message_id = m.id AND e.type = 'reverted'
     ) AS reverted,
-    EXISTS (
-      SELECT 1 FROM message_events e
-      WHERE e.message_id = m.id AND e.type = 'stashed'
-    ) AND NOT EXISTS (
-      SELECT 1 FROM message_events e
-      WHERE e.message_id = m.id AND e.type = 'unstashed'
-    ) AS stashed
+    (${stashedExpression}) AS stashed
   FROM messages m
   JOIN users u ON u.id = m.author_id
   JOIN git_commands c ON c.message_id = m.id
 `;
+
+type StashRow = {
+  id: string;
+  text: string;
+  created_at: string;
+  stash_payload: string | null;
+};
+
+function noteFrom(payload: string | null): string | null {
+  if (!payload) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(payload) as { note?: unknown };
+
+    return typeof parsed.note === "string" ? parsed.note : null;
+  } catch {
+    return null;
+  }
+}
 
 export function createMessageRepository(db: Database) {
   function list(conversationId?: string): MessageRow[] {
@@ -133,6 +159,66 @@ export function createMessageRepository(db: Database) {
     return row !== null;
   }
 
+  /**
+   * The conversation's stash for one branch, newest first. A stash is only a
+   * flag plus a note on a message, so the list is derived, not stored.
+   */
+  function listStashed(
+    conversationId: string,
+    branchId: string,
+  ): StashRecord[] {
+    const rows = db
+      .query(`
+        SELECT
+          m.id,
+          m.text,
+          m.created_at,
+          (
+            SELECT e.payload FROM message_events e
+            WHERE e.message_id = m.id AND e.type = 'stashed'
+            ORDER BY e.rowid DESC
+            LIMIT 1
+          ) AS stash_payload
+        FROM messages m
+        WHERE m.conversation_id = $conversationId
+          AND m.branch_id = $branchId
+          AND (${stashedExpression})
+        ORDER BY m.seq DESC
+      `)
+      .all({ $conversationId: conversationId, $branchId: branchId }) as StashRow[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      text: row.text,
+      note: noteFrom(row.stash_payload),
+      createdAt: row.created_at,
+    }));
+  }
+
+  /**
+   * The newest message on the branch that is not already stashed, which is what
+   * `git stash` sets aside.
+   */
+  function findNewestOnBranch(
+    conversationId: string,
+    branchId: string,
+  ): MessageRow | null {
+    const row = db
+      .query(`
+        ${selectMessage}
+        WHERE m.conversation_id = $conversationId
+          AND m.branch_id = $branchId
+          AND NOT (${stashedExpression})
+        ORDER BY m.seq DESC
+        LIMIT 1
+      `)
+      .get({ $conversationId: conversationId, $branchId: branchId }) as
+      | RawMessageRow
+      | null;
+
+    return row ? toMessageRow(row) : null;
+  }
+
   function insert(message: NewMessage): MessageRow {
     db.query(`
       INSERT INTO messages (
@@ -202,7 +288,16 @@ export function createMessageRepository(db: Database) {
     return record;
   }
 
-  return { list, findById, findByPrefix, addEvent, hasEvent, insert };
+  return {
+    list,
+    findById,
+    findByPrefix,
+    findNewestOnBranch,
+    listStashed,
+    addEvent,
+    hasEvent,
+    insert,
+  };
 }
 
 export type MessageRepository = ReturnType<typeof createMessageRepository>;

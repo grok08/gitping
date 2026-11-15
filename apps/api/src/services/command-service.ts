@@ -416,6 +416,99 @@ export function createCommandService({
     });
   }
 
+  function stashesFor(
+    conversationId: string,
+    branch: Branch,
+  ): StashRecord[] {
+    return messages.listStashed(conversationId, branch.id);
+  }
+
+  function stashesResult(stashes: StashRecord[]): SendCommandResult {
+    return { ok: true, kind: "stashes", stashes };
+  }
+
+  /**
+   * A stash sets the newest message on the branch aside without deleting it or
+   * creating a message of its own. Stash state belongs to the conversation, so
+   * every member who lists the same branch sees the same stash.
+   */
+  function stashPush(
+    conversation: Conversation,
+    branch: Branch,
+    note: string | undefined,
+  ): SendCommandResult {
+    const newest = messages.findNewestOnBranch(conversation.id, branch.id);
+
+    if (!newest) {
+      return reject("invalid_argument", `Nothing to stash on ${branch.name}`);
+    }
+
+    const setAside = db.transaction(() => {
+      messages.addEvent({
+        messageId: newest.id,
+        type: "stashed",
+        payload: { note: note ?? null },
+        createdAt: new Date().toISOString(),
+      });
+    });
+
+    setAside();
+    publishUpdate(conversation.id, newest.id);
+
+    return stashesResult(stashesFor(conversation.id, branch));
+  }
+
+  function stashPop(
+    conversation: Conversation,
+    branch: Branch,
+    target: string | undefined,
+  ): SendCommandResult {
+    const stashed = stashesFor(conversation.id, branch);
+    const stash = target
+      ? findStash(stashed, target)
+      : stashed[0];
+
+    if (!stash) {
+      return reject(
+        "invalid_argument",
+        target ? `Unknown stash: ${target}` : `No stash to pop on ${branch.name}`,
+      );
+    }
+
+    const restore = db.transaction(() => {
+      messages.addEvent({
+        messageId: stash.id,
+        type: "unstashed",
+        payload: { byMessageId: crypto.randomUUID() },
+        createdAt: new Date().toISOString(),
+      });
+    });
+
+    restore();
+    publishUpdate(conversation.id, stash.id);
+
+    return stashesResult(stashesFor(conversation.id, branch));
+  }
+
+  /**
+   * A stash id is a message id, given in full or as a unique prefix, because
+   * that is the id the message already shows.
+   */
+  function findStash(
+    stashed: StashRecord[],
+    target: string,
+  ): StashRecord | null {
+    const exact = stashed.find((stash) => stash.id === target);
+
+    if (exact) {
+      return exact;
+    }
+
+    const matches = stashed.filter((stash) => stash.id.startsWith(target));
+
+    return matches.length === 1 ? (matches[0] ?? null) : null;
+  }
+
   /**
    * A target is a full message id or a prefix of one. The prefix has to be at
    * least four characters so a short string cannot stand for a message by
@@ -676,6 +769,26 @@ export function createCommandService({
             parsed.branch,
             requestId,
           );
+        }
+
+        case "stash-push":
+        case "stash-list":
+        case "stash-pop": {
+          const resolved = contentBranch(conversation, user, options.branch);
+
+          if (!resolved.ok) {
+            return resolved.result;
+          }
+
+          if (parsed.type === "stash-push") {
+            return stashPush(conversation, resolved.branch, parsed.message);
+          }
+
+          if (parsed.type === "stash-list") {
+            return stashesResult(stashesFor(conversation.id, resolved.branch));
+          }
+
+          return stashPop(conversation, resolved.branch, parsed.stash);
         }
 
         case "branch": {

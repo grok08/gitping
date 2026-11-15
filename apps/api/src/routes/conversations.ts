@@ -103,5 +103,15 @@ export function createConversationRoutes(
     return c.json(result.value);
   });
 
+  routes.get("/conversations/:id/stashes", (c) => {
+    const result = conversations.stashes(c.req.param("id"), currentUserHandle);
+
+    if (!result.ok) {
+      return c.json({ error: result.error }, 404);
+    }
+
+    return c.json(result.value);
+  });
+
   return routes;
 }
