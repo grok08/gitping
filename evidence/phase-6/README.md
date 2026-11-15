@@ -4,7 +4,7 @@ Phase 6 is "command experience". The composer is the product: it now validates a
 
 ## Result
 
-Complete. `bun run check` exits 0 with 227 unit and integration tests across 18 files and 33 browser tests. A typed command is read by one shared catalog in `packages/command-engine`, the server builds its rejection sentence from the same catalog, and the composer renders empty, incomplete, invalid, and complete states from pure functions. Six new real-API browser tests prove the keyboard flow, the branch-aware suggestions, the history recall, the inline server rejection, the help panel, and the 390px layout.
+Complete. `bun run check` exits 0 with 230 unit and integration tests across 18 files and 34 browser tests. A typed command is read by one shared catalog in `packages/command-engine`, the server builds its rejection sentence from the same catalog, and the composer renders empty, incomplete, invalid, and complete states from pure functions. Seven new real-API browser tests prove the keyboard flow, the branch-aware suggestions, the history recall, the inline server rejection, the help panel, and the 390px layout.
 
 ## Commands and results
 
@@ -12,14 +12,14 @@ Every command was run from the repository root. Exit codes are the real ones.
 
 | Command | Result |
 | --- | --- |
-| `cmd /c "bun run check > %TEMP%\check.log 2>&1"` | exit 0: 227 unit tests, 33 browser tests, build 278.42 kB JS and 33.18 kB CSS |
+| `cmd /c "bun run check > %TEMP%\check.log 2>&1"` | exit 0: 230 unit tests, 34 browser tests, build 279.01 kB JS and 33.18 kB CSS |
 | `bun run typecheck` | exit 0 (4 projects: command-engine, api, web app, web node/tests) |
 | `bun run lint` | exit 0 (oxlint over `apps` and `packages`, no warnings) |
-| `bun run test` | exit 0: 227 passed, 0 failed, 18 files |
-| `bun run build` | exit 0, `dist/assets/index-*.js` 278.42 kB, CSS 33.18 kB |
-| `bun run --cwd apps/web test:e2e tests/e2e/command-experience.spec.ts` | first run 1 failed, 5 passed (recorded below); second run exit 0, 6 passed |
+| `bun run test` | exit 0: 230 passed, 0 failed, 18 files |
+| `bun run build` | exit 0, `dist/assets/index-*.js` 279.01 kB, CSS 33.18 kB |
+| `bun run --cwd apps/web test:e2e tests/e2e/command-experience.spec.ts` | first run 1 failed, 5 passed (recorded below); after the fix 6 passed, and after the review 7 passed |
 | `bun run --cwd apps/web test:e2e tests/e2e/visual.spec.ts --update-snapshots` | exit 0, 8 passed, 5 baselines changed and 2 stayed byte-identical |
-| `bun run test:e2e` | exit 0, 33 passed (17.8 s in the final run) |
+| `bun run test:e2e` | exit 0, 34 passed (20.5 s in the final run) |
 | `bun run db:inspect apps/web/test-results/gitping-e2e.db` | exit 0, output in [db-dump.txt](db-dump.txt) |
 
 Each slice ended with `bun run typecheck`, `bun run lint`, and `bun run test` green before the next one started:
@@ -30,10 +30,11 @@ Each slice ended with `bun run typecheck`, `bun run lint`, and `bun run test` gr
 | 2. Pure client helpers | 227 | exit 0 | exit 0 | exit 0 |
 | 3. Composer, history, help | 227 | exit 0 | exit 0 | exit 0 |
 | 4. Browser proof and parity | 227 | exit 0 | exit 0 | exit 0 |
+| 5. Independent review fixes | 230 | exit 0 | exit 0 | exit 0 |
 
-The 227 unit tests are the 187 from Phase 5 plus 40 new ones: 7 catalog invariants, 25 command-input tests, 7 history tests, and 1 API test that every supported catalog entry is accepted by the command service.
+The 230 unit tests are the 187 from Phase 5 plus 43 new ones: 7 catalog invariants, 28 command-input tests, 7 history tests, and 1 API test that runs every supported command through the service.
 
-The 33 browser tests are 6 mocked UI tests, 2 real-API domain tests, 2 real-API conversation tests, 8 visual parity tests, 4 real-API realtime tests, 1 real-API idempotency test, 4 real-API Git-native tests, and 6 real-API command-experience tests.
+The 34 browser tests are 6 mocked UI tests, 2 real-API domain tests, 2 real-API conversation tests, 8 visual parity tests, 4 real-API realtime tests, 1 real-API idempotency test, 4 real-API Git-native tests, and 7 real-API command-experience tests.
 
 ## The catalog
 
@@ -127,23 +128,27 @@ The composer's existing help row has a small `?` button. It opens the existing `
 4. ArrowDown then Enter completes `git switch weekend`, and the popup closes because the argument is exact.
 5. Enter sends. The header and `GET /branches` both say `weekend`, and the message count is still one. [screenshots/switch-through-suggestions.png](screenshots/switch-through-suggestions.png)
 
-### 2. History recall
+### 2. The keyboard surface
 
-A commit is sent, the composer clears, and ArrowUp recalls the exact command; ArrowDown returns the empty draft. [screenshots/history-recall.png](screenshots/history-recall.png)
+Typing `git sw` exposes the combobox state: `aria-expanded="true"`, `aria-controls="composer-suggestions"`, and `aria-activedescendant="composer-suggestions-option-0"`. Tab accepts the highlight without sending, so the text becomes `git switch ` and the branch suggestions open. Escape then closes the popup and leaves the text alone. [screenshots/keyboard-tab-accept.png](screenshots/keyboard-tab-accept.png)
 
-### 3. The server rejection replaces the local reading
+### 3. History recall
 
-`git log` shows the local `not enabled` error first. Enter sends it; the server's sentence replaces it in the same element, and no message row is added. [screenshots/inline-error-local.png](screenshots/inline-error-local.png), [screenshots/inline-error-server.png](screenshots/inline-error-server.png)
+A commit is sent, the composer clears, and ArrowUp recalls the exact command; ArrowDown returns the empty draft. Recalling it again and pressing Enter sends it, and ArrowDown afterwards stays empty because the parent clear reset the cursor. [screenshots/history-recall.png](screenshots/history-recall.png)
 
-### 4. Help
+### 4. The server rejection replaces the local reading
+
+`git log` shows the local `not enabled` error first. Enter sends it; the server's sentence replaces it in the same element, and no message row is added. Dismissing it and pressing Enter again shows the next server rejection, so a dismissal never swallows a retry. [screenshots/inline-error-local.png](screenshots/inline-error-local.png), [screenshots/inline-error-server.png](screenshots/inline-error-server.png)
+
+### 5. Help
 
 The `?` button opens the panel with the six supported syntaxes and the unsupported line. [screenshots/command-help.png](screenshots/command-help.png)
 
-### 5. Preview
+### 6. Preview
 
 A complete commit shows `Commit to #<channel> on main`; a merge shows `Merge weekend into main`. [screenshots/command-preview.png](screenshots/command-preview.png)
 
-### 6. 390 px
+### 7. 390 px
 
 The composer, the popup, the hint, and the `?` fit a 390 px viewport; the popup's box is inside the viewport. [screenshots/composer-390.png](screenshots/composer-390.png)
 
@@ -170,25 +175,40 @@ The first recording was not acceptable and was not kept. The 17 px button made t
 [db-dump.txt](db-dump.txt) is the database left by the final `bun run check`, at schema version 3:
 
 ```text
-messages: 21, commands: 21, message events: 25
+messages: 22, commands: 22, message events: 26
   events: created (one per message), reverted, stashed, unstashed, merged
   conversations: 6 seeded + 14 created by the Phase 3, 4, 5, and 6 browser tests
   branches: 8 seeded + one main per created conversation (14) + release + feature + phase-six weekend + preview weekend
   conversation_members: 35
-  command requests: 21, one per content command the browser sent
+  command requests: 22, one per content command the browser sent
 ```
 
-Phase 6 added three messages, three command requests, four conversations, six branches, and four members. The three messages are the base commit in the suggestions channel, the recalled commit in the history channel, and the preview commit. The error and 390 px tests send nothing. No migration ran and no seed row changed.
+Phase 6 added four messages, four command requests, four conversations, six branches, and four members. The four messages are the base commit in the suggestions channel, the recalled commit in the history channel and its retry (the history test sends the recalled command again), and the preview commit. The error, keyboard, and 390 px tests send nothing. No migration ran and no seed row changed.
 
 ## Failures found and fixed
 
-1. **The first run of `command-experience.spec.ts` was 1 failed, 5 passed.** The 390 px test tried to create a channel while the mobile sidebar is a drawer that starts closed, so `New channel` was not reachable and the test timed out. The test now uses the seeded channel, since it only proves the composer's width. The second run was 6 passed.
+1. **The first run of `command-experience.spec.ts` was 1 failed, 5 passed.** The 390 px test tried to create a channel while the mobile sidebar is a drawer that starts closed, so `New channel` was not reachable and the test timed out. The test now uses the seeded channel, since it only proves the composer's width.
 2. **The first screenshot run wrote `*.png.png`.** The call sites passed a file name that already ended in `.png` to a helper that appends `.png`. Fixed before the recorded run; the recorded screenshots have single extensions.
 3. **The first baseline refresh moved the whole composer by 3 px on desktop and 1 px at 390 px.** The `?` button was taller than the help row's line box, so the tray grew and every idle state shifted. This was caught by comparing the old and new baselines and was fixed with the margin and mobile sizing described above. The second refresh confines the change to the help row's right end. This is why the phase did not ship the first refresh.
+4. **Accepting the `git commit` suggestion produced an invalid command.** The skeleton `git commit -m ""` has an empty quoted token; the parser drops it and reports `Missing commit message`, so the composer showed an error right after its own completion. An empty quoted token now reads as the argument stage, so the hint asks for message text and no error is shown. The same fix covers `git stash push -m ""` and `git switch -c ""`.
+5. **Completing before an existing token glued two words.** `git switch |main` completed to `weekend` produced `mainmain`, and `git stash |pop` produced `""pop`. Completion now adds a separator when it inserts before a non-space token.
+6. **`git commit --amend -m "hi"` and `git commit --message=hi` were marked invalid** even though the parser and the server accept them. The catalog models the shapes the composer teaches, so when the grammar has no match but the parser succeeds, the command is complete.
+7. **A dismissed error swallowed the next server rejection for the same text.** Dismissing `git log`'s error and pressing Enter again showed nothing on the retry. A server rejection is now always rendered; the dismissal only silences the local reading until the text changes.
+8. **A same-value history step left a pending caret.** ArrowUp at the oldest history entry returns the same text, so the caret effect never ran and the pending position moved the next unrelated character mid-word. `apply` now handles the same-value case directly.
+9. **A parent clear left the history cursor armed.** After sending a recalled command, ArrowDown could conjure the next history entry into the empty composer. The cursor now resets when the value changes from outside a completion.
+10. **Pure caret movement left the completion position stale.** Home, End, ArrowLeft, and some mouse clicks did not update the caret state. Keyup and click now sync it.
+11. **The first API acceptance test could not fail.** It only asserted `not invalid_command`, so a verb that was routed but always refused would pass. It now executes all six supported verbs (with a revert target, a side branch, a merge, and a stash) and asserts every result is `ok`.
+12. **The keyboard surface and the empty skeleton had no test.** The review showed the commit completion was broken and untested. The unit suite now validates the empty quoted token and the parser-valid fallback, and a seventh browser test covers Tab, Escape, and the `aria-*` wiring.
+
+Two review nits are deliberately not fixed: typing `gi` (before the full `git`) offers no suggestion, and a completion after extra whitespace keeps the gap. Both are cosmetic, neither changes a command or the server's answer.
 
 ## Independent review
 
-Not run in this session. The implementation and its evidence were produced in one branch without a separate reviewer, so merge-ready stays the reviewer's call.
+An independent read-only review ran on the committed tree. It read the catalog, the three client helpers, the composer and its page wiring, the API service, the unit and browser tests, the visual spec, and the database dump, and traced failing strings through the pure helpers.
+
+It found the seven behavioral defects recorded above as items 4 through 10, the weak API test as item 11, and the missing keyboard and empty-skeleton coverage as item 12. All twelve are fixed and re-run in the final `bun run check`. It found no security or boundary issue: all dynamic text is a React text node, history parsing is defensive, storage failures are tolerated, local validation never disables send, and the server stays authoritative.
+
+What the reviewer could not verify without the same machine and a rerun were the pixel boxes and the bundle sizes in this file. Both come from the final local run recorded in the command table and the comparator described under visual parity.
 
 ## Remaining risk and limits
 
