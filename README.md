@@ -148,6 +148,7 @@ gitping/
 │           └── parser.test.ts
 │
 ├── evidence/                     # per-phase browser evidence
+├── docs/                         # designs for work not implemented yet
 ├── package.json
 └── bun.lock
 ```
@@ -468,6 +469,11 @@ Rules the server and client rely on:
 - On reconnect the client refetches `GET /conversations/:id/messages` and merges it, which closes gaps without duplicates.
 
 The implementation uses Hono's Bun WebSocket adapter: the route upgrades through `upgradeWebSocket`, `Bun.serve` receives the paired `websocket` handler, and `apps/api/src/realtime/hub.ts` holds the per-conversation registry.
+
+Two designs are written down but not implemented, because this deployment does not need them yet:
+
+- [docs/realtime-outbox.md](docs/realtime-outbox.md): a transactional outbox, so a crash between the commit and the broadcast cannot leave a pushed message behind.
+- [docs/realtime-catch-up.md](docs/realtime-catch-up.md): an `after=<seq>` catch-up, so a reconnect does not refetch the whole conversation.
 
 ---
 

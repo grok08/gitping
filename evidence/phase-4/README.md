@@ -212,9 +212,9 @@ Seven issues were fixed on top of the phase commit, all covered by tests:
 Four issues are knowingly left alone, because each would cost a protocol or schema change to cover a failure mode this app does not produce yet:
 
 - **Duplicate commits after a lost POST response** need a client-supplied idempotency key and a uniqueness constraint. The composer keeps the text on failure and never retries automatically, so the human decides.
-- **A crash between commit and broadcast** would leave a row nobody was pushed. Closing it properly needs a transactional outbox and a relay loop; reconnect catch-up repairs the symptom.
+- **A crash between commit and broadcast** would leave a row nobody was pushed. Closing it properly needs a transactional outbox and a relay loop; reconnect catch-up repairs the symptom. Design: [docs/realtime-outbox.md](../../docs/realtime-outbox.md).
 - **Membership checks on the socket** need an identity model. The origin check covers the browser case; any client that can open a socket can still read any conversation id.
-- **A `since=seq` catch-up** is an optimisation with no visible benefit at this data size.
+- **A `since=seq` catch-up** is an optimisation with no visible benefit at this data size. Design: [docs/realtime-catch-up.md](../../docs/realtime-catch-up.md).
 
 ## Remaining risk
 
