@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { supportedCommandEntries } from "@gitping/command-engine";
 import type { CommandRequestRepository } from "../repositories/command-request-repository";
 import { createCommandRequestRepository } from "../repositories/command-request-repository";
 import { createMessageRepository } from "../repositories/message-repository";
@@ -105,6 +106,19 @@ describe("command service", () => {
         "Unsupported command. Use git commit, git revert, git merge, git branch, git switch, or git stash.",
     });
     expect(messages.list()).toHaveLength(0);
+  });
+
+  test("accepts every command the catalog marks as supported", () => {
+    for (const entry of supportedCommandEntries()) {
+      const { commands } = createTestCommandService();
+      const result = commands.send(entry.example, "grok08");
+      const accepted = result.ok || result.reason !== "invalid_command";
+
+      expect({ name: entry.name, accepted }).toEqual({
+        name: entry.name,
+        accepted: true,
+      });
+    }
   });
 
   test("rejects input that is not a supported Git command", () => {

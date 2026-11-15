@@ -1,4 +1,7 @@
-import { parseCommand } from "@gitping/command-engine";
+import {
+  parseCommand,
+  unsupportedCommandMessage,
+} from "@gitping/command-engine";
 import type { Database } from "bun:sqlite";
 import type { BranchRepository } from "../repositories/branch-repository";
 import type { CommandRequestRepository } from "../repositories/command-request-repository";
@@ -80,8 +83,8 @@ const defaultConversation = "engineering";
 const defaultBranch = "main";
 const minTargetLength = 4;
 const requestConflictError = "Request id already used for another command";
-const unsupportedCommand =
-  "Unsupported command. Use git commit, git revert, git merge, git branch, git switch, or git stash.";
+/** Built from the catalog the browser offers, so the two cannot disagree. */
+const unsupportedCommand = unsupportedCommandMessage();
 
 /**
  * Branch names follow Git's rule for a short, safe name. `HEAD` is refused
